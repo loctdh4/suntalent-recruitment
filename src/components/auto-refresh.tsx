@@ -1,0 +1,24 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+/**
+ * Tự động refresh server component theo chu kỳ khi `enabled` = true
+ * (vd: còn ứng viên đang parse). Dừng ngay khi enabled = false.
+ */
+export function AutoRefresh({
+  enabled,
+  intervalMs = 4000,
+}: {
+  enabled: boolean;
+  intervalMs?: number;
+}) {
+  const router = useRouter();
+  useEffect(() => {
+    if (!enabled) return;
+    const t = setInterval(() => router.refresh(), intervalMs);
+    return () => clearInterval(t);
+  }, [enabled, intervalMs, router]);
+  return null;
+}
