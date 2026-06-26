@@ -6,7 +6,7 @@ import { z } from "zod";
 import { assertRole } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { candidates, candidateSkills, skills, applications } from "@/lib/db/schema";
-import { presignUpload } from "@/lib/storage";
+import { presignUpload, buildFileKey } from "@/lib/storage";
 import { embedText, candidateProfileText } from "@/lib/ai/embeddings";
 import { inngest, EVENTS } from "@/inngest/client";
 import { processCandidate, markCandidateError } from "./process";
@@ -88,7 +88,7 @@ export async function presignCvUpload(
 ): Promise<PresignResult> {
   await assertRole([...CANDIDATE_MANAGER_ROLES]);
   try {
-    const fileKey = `${crypto.randomUUID()}-${fileName}`;
+    const fileKey = buildFileKey(fileName);
     const { token, path, bucket } = await presignUpload(
       fileKey,
       contentType || "application/pdf",
@@ -277,7 +277,7 @@ export async function requestCvUpload(input: {
   const user = await assertRole([...CANDIDATE_MANAGER_ROLES]);
   const { fileName, contentType, source } = reqSchema.parse(input);
 
-  const fileKey = `${crypto.randomUUID()}-${fileName}`;
+  const fileKey = buildFileKey(fileName);
   const [candidate] = await db
     .insert(candidates)
     .values({ rawCvUrl: fileKey, source, status: "parsing", createdBy: user.id })

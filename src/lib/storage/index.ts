@@ -8,6 +8,29 @@ import { createSupabaseServiceClient } from "@/lib/supabase/service";
 
 export const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? "cvs";
 
+/**
+ * Tạo storage key an toàn từ tên file người dùng tải lên.
+ * Bỏ dấu tiếng Việt (NFD), đổi đ/Đ, thay dấu cách & ký tự lạ bằng "-", giữ phần đuôi.
+ * UUID phía trước đảm bảo không trùng; phần tên chỉ để dễ nhận diện.
+ * Tránh lỗi lệch chữ ký signed-upload của Supabase khi key có ký tự Unicode/space.
+ */
+export function buildFileKey(fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  const ext =
+    dot > 0 ? fileName.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+  const base =
+    (dot > 0 ? fileName.slice(0, dot) : fileName)
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D")
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "cv";
+  const name = ext ? `${base}.${ext}` : base;
+  return `${crypto.randomUUID()}-${name}`;
+}
+
 /** Tạo signed upload URL (token/path) để client upload file CV thẳng lên storage. */
 export async function presignUpload(
   key: string,
