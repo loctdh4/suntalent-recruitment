@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -209,6 +209,10 @@ export function PipelineBoard({
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initial);
+  // Đồng bộ khi dữ liệu server đổi (vd vừa thêm ứng viên → router.refresh).
+  useEffect(() => {
+    setCards(initial);
+  }, [initial]);
   const [activeId, setActiveId] = useState<string | null>(null);
   // Hộp thoại nhập thời gian PV khi chuyển sang "PV khách hàng".
   const [ivModal, setIvModal] = useState<{

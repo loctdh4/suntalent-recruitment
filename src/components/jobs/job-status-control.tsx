@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -33,6 +33,7 @@ export function JobStatusControl({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [optimistic, setOptimistic] = useOptimistic(status);
 
   if (!canEdit) {
     return <JobStatusBadge status={status} />;
@@ -40,6 +41,7 @@ export function JobStatusControl({
 
   function change(value: string) {
     startTransition(async () => {
+      setOptimistic(value);
       const res = await updateJobStatus(jobId, value);
       if (res?.error) toast.error(res.error);
       else {
@@ -50,8 +52,8 @@ export function JobStatusControl({
   }
 
   return (
-    <Select value={status} onValueChange={change} disabled={pending}>
-      <SelectTrigger className={cn("w-40 font-medium", TRIGGER_STYLE[status])}>
+    <Select value={optimistic} onValueChange={change} disabled={pending}>
+      <SelectTrigger className={cn("w-40 font-medium", TRIGGER_STYLE[optimistic])}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

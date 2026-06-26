@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Plus } from "lucide-react";
@@ -18,8 +18,9 @@ export function AddToJobButton({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [optimisticAdded, setOptimisticAdded] = useOptimistic(added);
 
-  if (added) {
+  if (optimisticAdded) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <Check className="size-3.5" /> Đã thêm
@@ -34,6 +35,7 @@ export function AddToJobButton({
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
+          setOptimisticAdded(true);
           const res = await addCandidateToJob(jobId, candidateId);
           if (res?.error) toast.error(res.error);
           else {

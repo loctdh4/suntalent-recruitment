@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -24,6 +24,7 @@ export function SeekingStatusSelect({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [optimistic, setOptimistic] = useOptimistic(value);
 
   if (!canEdit) {
     return (
@@ -35,10 +36,11 @@ export function SeekingStatusSelect({
 
   return (
     <Select
-      value={value}
+      value={optimistic}
       disabled={pending}
       onValueChange={(v) =>
         startTransition(async () => {
+          setOptimistic(v);
           const res = await updateSeekingStatus(candidateId, v);
           if (res?.error) toast.error(res.error);
           else {

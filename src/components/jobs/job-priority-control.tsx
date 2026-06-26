@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -32,6 +32,7 @@ export function JobPriorityControl({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [optimistic, setOptimistic] = useOptimistic(priority);
 
   if (!canEdit) {
     return <PriorityBadge priority={priority} />;
@@ -39,6 +40,7 @@ export function JobPriorityControl({
 
   function change(value: string) {
     startTransition(async () => {
+      setOptimistic(value);
       const res = await updateJobPriority(jobId, value);
       if (res?.error) toast.error(res.error);
       else {
@@ -49,8 +51,8 @@ export function JobPriorityControl({
   }
 
   return (
-    <Select value={priority} onValueChange={change} disabled={pending}>
-      <SelectTrigger className={cn("w-44 font-medium", TRIGGER_STYLE[priority])}>
+    <Select value={optimistic} onValueChange={change} disabled={pending}>
+      <SelectTrigger className={cn("w-44 font-medium", TRIGGER_STYLE[optimistic])}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
