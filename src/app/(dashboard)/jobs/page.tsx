@@ -34,6 +34,12 @@ export default async function JobsPage({
   // Giá hợp đồng: chỉ admin/sale xem; lọc theo range chỉ admin.
   const canViewContract = role === "admin" || role === "sales";
   const canFilterContract = role === "admin";
+  // HR/HR intern: chỉ job mình được giao; Sale/Sale intern: chỉ job mình tạo.
+  const hrOnly = role === "recruiter" || role === "recruiter_intern";
+  const salesOnly = role === "sales" || role === "sales_intern";
+  const restrictRecruiterId = hrOnly ? user?.id : undefined;
+  const restrictOwnerId = salesOnly ? user?.id : undefined;
+  const scoped = hrOnly || salesOnly;
 
   // Tùy chọn cho filter Sale / HR / Khách hàng (không phụ thuộc bộ lọc).
   const people = await db
@@ -92,34 +98,36 @@ export default async function JobsPage({
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm font-medium text-muted-foreground">Tổng vị trí</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight">{totalJobs}</p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span>Đang mở: <b className="text-foreground">{jobStat("open")}</b></span>
-              <span>Tạm dừng: <b className="text-foreground">{jobStat("on_hold")}</b></span>
-              <span>Đã đóng: <b className="text-foreground">{jobStat("closed")}</b></span>
-              <span>Đã tuyển: <b className="text-foreground">{jobStat("filled")}</b></span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-sm font-medium text-muted-foreground">
-              Nhu cầu tuyển (vị trí đang mở)
-            </p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight">
-              {Number(headcount ?? 0)}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span>Đang ứng tuyển: <b className="text-foreground">{activeApps}</b></span>
-              <span>Đã nhận việc: <b className="text-foreground">{hiredApps}</b></span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {!scoped && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm font-medium text-muted-foreground">Tổng vị trí</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight">{totalJobs}</p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span>Đang mở: <b className="text-foreground">{jobStat("open")}</b></span>
+                <span>Tạm dừng: <b className="text-foreground">{jobStat("on_hold")}</b></span>
+                <span>Đã đóng: <b className="text-foreground">{jobStat("closed")}</b></span>
+                <span>Đã tuyển: <b className="text-foreground">{jobStat("filled")}</b></span>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-sm font-medium text-muted-foreground">
+                Nhu cầu tuyển (vị trí đang mở)
+              </p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight">
+                {Number(headcount ?? 0)}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span>Đang ứng tuyển: <b className="text-foreground">{activeApps}</b></span>
+                <span>Đã nhận việc: <b className="text-foreground">{hiredApps}</b></span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <FiltersPendingProvider>
         <JobFilters
@@ -128,6 +136,8 @@ export default async function JobsPage({
           hrs={hrOptions}
           industries={industryList}
           showContract={canFilterContract}
+          hideSale={scoped}
+          hideHr={hrOnly}
         />
 
         <PendingArea fallback={<JobsTableSkeleton />}>
@@ -137,6 +147,8 @@ export default async function JobsPage({
               canViewContract={canViewContract}
               canFilterContract={canFilterContract}
               canCreate={canCreate}
+              restrictRecruiterId={restrictRecruiterId}
+              restrictOwnerId={restrictOwnerId}
             />
           </Suspense>
         </PendingArea>
