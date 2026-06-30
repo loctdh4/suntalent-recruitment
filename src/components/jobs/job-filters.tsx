@@ -36,12 +36,16 @@ export function JobFilters({
   hrs,
   industries,
   showContract = false,
+  hideSale = false,
+  hideHr = false,
 }: {
   clients: Person[];
   sales: Person[];
   hrs: Person[];
   industries: string[];
   showContract?: boolean;
+  hideSale?: boolean;
+  hideHr?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -183,33 +187,37 @@ export function JobFilters({
         </SelectContent>
       </Select>
 
-      <Select value={get("sale") || "all"} onValueChange={(v) => pushParams({ sale: v })}>
-        <SelectTrigger className="sm:w-40">
-          <SelectValue placeholder="Sale" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả Sale</SelectItem>
-          {sales.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {!hideSale && (
+        <Select value={get("sale") || "all"} onValueChange={(v) => pushParams({ sale: v })}>
+          <SelectTrigger className="sm:w-40">
+            <SelectValue placeholder="Sale" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả Sale</SelectItem>
+            {sales.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
-      <Select value={get("hr") || "all"} onValueChange={(v) => pushParams({ hr: v })}>
-        <SelectTrigger className="sm:w-40">
-          <SelectValue placeholder="HR" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả HR</SelectItem>
-          {hrs.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {!hideHr && (
+        <Select value={get("hr") || "all"} onValueChange={(v) => pushParams({ hr: v })}>
+          <SelectTrigger className="sm:w-40">
+            <SelectValue placeholder="HR" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả HR</SelectItem>
+            {hrs.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <Button
         variant={get("alert") ? "secondary" : "outline"}

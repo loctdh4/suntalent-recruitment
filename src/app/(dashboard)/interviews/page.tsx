@@ -1,4 +1,4 @@
-import { desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   applications,
@@ -29,6 +29,10 @@ export default async function InterviewsPage({
   const canManage = CANDIDATE_MANAGER_ROLES.includes(
     (user?.role ?? "") as (typeof CANDIDATE_MANAGER_ROLES)[number],
   );
+  // HR: chỉ lịch PV của job mình được giao; Sale: chỉ job mình tạo.
+  const role = user?.role ?? "";
+  const hrOnly = role === "recruiter" || role === "recruiter_intern";
+  const salesOnly = role === "sales" || role === "sales_intern";
 
   const raw = await db
     .select({
@@ -54,7 +58,25 @@ export default async function InterviewsPage({
     .innerJoin(jobs, eq(applications.jobId, jobs.id))
     .leftJoin(clients, eq(jobs.clientId, clients.id))
     .leftJoin(profiles, eq(jobs.ownerId, profiles.id))
-    .where(isNotNull(applications.interviewAt))
+    .where(
+      hrOnly && user
+        ? and(
+            isNotNull(applications.interviewAt),
+            inArray(
+              jobs.id,
+              db
+                .select({ jobId: jobRecruiters.jobId })
+                .from(jobRecruiters)
+                .where(eq(jobRecruiters.recruiterId, user.id)),
+            ),
+          )
+        : salesOnly && user
+          ? and(
+              isNotNull(applications.interviewAt),
+              eq(jobs.ownerId, user.id),
+            )
+          : isNotNull(applications.interviewAt),
+    )
     .orderBy(desc(applications.interviewAt));
 
   // HR phụ trách theo từng job.

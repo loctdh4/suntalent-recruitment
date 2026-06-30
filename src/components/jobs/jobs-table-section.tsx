@@ -65,16 +65,34 @@ export async function JobsTableSection({
   canViewContract,
   canFilterContract,
   canCreate,
+  restrictRecruiterId,
+  restrictOwnerId,
 }: {
   filters: JobsTableFilters;
   canViewContract: boolean;
   canFilterContract: boolean;
   canCreate: boolean;
+  restrictRecruiterId?: string;
+  restrictOwnerId?: string;
 }) {
   const { q, sale, hr, status, client, priority, loc, ind, alert, sort, dir, cmin, cmax } =
     filters;
 
   const conds: SQL[] = [];
+  // HR/HR intern: chỉ thấy job mình được giao phụ trách.
+  if (restrictRecruiterId) {
+    conds.push(
+      inArray(
+        jobs.id,
+        db
+          .select({ jobId: jobRecruiters.jobId })
+          .from(jobRecruiters)
+          .where(eq(jobRecruiters.recruiterId, restrictRecruiterId)),
+      ),
+    );
+  }
+  // Sale/Sale intern: chỉ thấy job mình tạo (owner).
+  if (restrictOwnerId) conds.push(eq(jobs.ownerId, restrictOwnerId));
   if (q?.trim()) {
     const kw = `%${q.trim()}%`;
     const digits = q.replace(/\D/g, "");
