@@ -151,6 +151,8 @@ export const jobs = pgTable(
     minYears: integer("min_years"), // số năm kinh nghiệm tối thiểu yêu cầu
     headcount: integer("headcount").notNull().default(1), // số lượng cần tuyển
     contractValue: bigint("contract_value", { mode: "number" }), // giá hợp đồng cho 1 vị trí (VND)
+    // Gói bảo hành (tháng) — hết hạn kể từ ngày ứng viên cuối cùng onboard.
+    warrantyMonths: integer("warranty_months").notNull().default(1),
     salaryMin: integer("salary_min"),
     salaryMax: integer("salary_max"),
     description: text("description"),

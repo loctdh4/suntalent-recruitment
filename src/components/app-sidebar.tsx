@@ -9,6 +9,7 @@ import {
   CalendarClock,
   LayoutDashboard,
   Tags,
+  TrendingUp,
   UserCog,
   Users,
 } from "lucide-react";
@@ -49,6 +50,12 @@ const nav: {
     href: "/industries",
     label: "Danh mục ngành",
     icon: Tags,
+    roles: ["admin"],
+  },
+  {
+    href: "/performance",
+    label: "Hiệu suất team",
+    icon: TrendingUp,
     roles: ["admin"],
   },
   { href: "/team", label: "Quản lý team", icon: UserCog, roles: ["admin"] },

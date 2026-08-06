@@ -20,7 +20,7 @@ import { IndustrySelect } from "@/components/ui/industry-select";
 import { ClientQuickAdd } from "@/components/clients/client-quick-add";
 import { JdField } from "@/components/jobs/jd-field";
 import { createJob, updateJob, type JobActionState } from "@/lib/jobs/actions";
-import { JOB_PRIORITY_OPTIONS } from "@/lib/jobs/constants";
+import { JOB_PRIORITY_OPTIONS, WARRANTY_OPTIONS } from "@/lib/jobs/constants";
 
 type ClientOption = { id: string; name: string };
 
@@ -34,6 +34,7 @@ export type JobFormValues = {
   minYears: number | null;
   headcount: number;
   contractValue: number | null;
+  warrantyMonths: number;
   salaryMin: number | null;
   salaryMax: number | null;
   requiredSkills: string[] | null;
@@ -56,6 +57,9 @@ export function JobForm({
   const [clientId, setClientId] = useState<string>(job?.clientId ?? "");
   const [remote, setRemote] = useState<string>(job?.remote ? "true" : "false");
   const [priority, setPriority] = useState<string>(job?.priority ?? "normal");
+  const [warrantyMonths, setWarrantyMonths] = useState<string>(
+    String(job?.warrantyMonths ?? 1),
+  );
   // Thành công → server action redirect sang trang chi tiết.
   const [state, formAction, pending] = useActionState<JobActionState, FormData>(
     isEdit ? updateJob : createJob,
@@ -181,14 +185,32 @@ export function JobForm({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="contractValue">Giá hợp đồng / vị trí (VND)</Label>
-        <MoneyInput
-          id="contractValue"
-          name="contractValue"
-          defaultValue={job?.contractValue ?? null}
-          placeholder="VD: 30.000.000"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="contractValue">Giá hợp đồng / vị trí (VND)</Label>
+          <MoneyInput
+            id="contractValue"
+            name="contractValue"
+            defaultValue={job?.contractValue ?? null}
+            placeholder="VD: 30.000.000"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Gói bảo hành</Label>
+          <input type="hidden" name="warrantyMonths" value={warrantyMonths} />
+          <Select value={warrantyMonths} onValueChange={setWarrantyMonths}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {WARRANTY_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={String(o.value)}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

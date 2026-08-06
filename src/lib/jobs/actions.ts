@@ -53,6 +53,7 @@ const schema = z.object({
   jdUrl: z.string().trim().optional(),
   headcount: z.number().int().positive().default(1),
   contractValue: z.number().int().nonnegative().optional(),
+  warrantyMonths: z.number().int().positive().max(60).default(1),
   salaryMin: z.number().int().nonnegative().optional(),
   salaryMax: z.number().int().nonnegative().optional(),
 });
@@ -74,6 +75,7 @@ function parseJobForm(formData: FormData) {
     jdUrl: formData.get("jdUrl") ?? undefined,
     headcount: toInt(formData.get("headcount")) ?? 1,
     contractValue: toInt(formData.get("contractValue")),
+    warrantyMonths: toInt(formData.get("warrantyMonths")) ?? 1,
     salaryMin: toInt(formData.get("salaryMin")),
     salaryMax: toInt(formData.get("salaryMax")),
   });
@@ -104,6 +106,7 @@ export async function createJob(
       minYears: d.minYears,
       headcount: d.headcount,
       contractValue: d.contractValue,
+      warrantyMonths: d.warrantyMonths,
       salaryMin: d.salaryMin,
       salaryMax: d.salaryMax,
       description: d.description,
@@ -145,6 +148,7 @@ export async function updateJob(
       minYears: d.minYears,
       headcount: d.headcount,
       contractValue: d.contractValue,
+      warrantyMonths: d.warrantyMonths,
       salaryMin: d.salaryMin,
       salaryMax: d.salaryMax,
       description: d.description,

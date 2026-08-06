@@ -34,6 +34,7 @@ export default async function EditJobPage({
       minYears: jobs.minYears,
       headcount: jobs.headcount,
       contractValue: jobs.contractValue,
+      warrantyMonths: jobs.warrantyMonths,
       salaryMin: jobs.salaryMin,
       salaryMax: jobs.salaryMax,
       requiredSkills: jobs.requiredSkills,
