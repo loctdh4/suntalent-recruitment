@@ -296,9 +296,16 @@ export async function JobsTableSection({
                   {(() => {
                     const names = hrMap.get(j.id);
                     if (!names?.length) return "—";
-                    return names.length <= 2
-                      ? names.join(", ")
-                      : `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+                    // Nhiều HR phụ trách → mỗi người một dòng cho dễ đọc.
+                    return (
+                      <div className="space-y-0.5">
+                        {names.map((n, i) => (
+                          <div key={i} className="whitespace-nowrap">
+                            {n}
+                          </div>
+                        ))}
+                      </div>
+                    );
                   })()}
                 </TableCell>
                 {canViewContract && (
