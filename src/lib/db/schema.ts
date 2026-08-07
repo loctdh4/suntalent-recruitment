@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -5,6 +6,7 @@ import {
   integer,
   bigint,
   boolean,
+  date,
   timestamp,
   jsonb,
   vector,
@@ -151,6 +153,11 @@ export const jobs = pgTable(
     minYears: integer("min_years"), // số năm kinh nghiệm tối thiểu yêu cầu
     headcount: integer("headcount").notNull().default(1), // số lượng cần tuyển
     contractValue: bigint("contract_value", { mode: "number" }), // giá hợp đồng cho 1 vị trí (VND)
+    // Ngày kí hợp đồng — mốc ghi nhận doanh thu theo tháng của sale.
+    // Ngày dương lịch (không giờ) nên lưu `date`, tránh lệch múi giờ.
+    signedAt: date("signed_at", { mode: "string" })
+      .notNull()
+      .default(sql`CURRENT_DATE`),
     // Gói bảo hành (tháng) — hết hạn kể từ ngày ứng viên cuối cùng onboard.
     warrantyMonths: integer("warranty_months").notNull().default(1),
     salaryMin: integer("salary_min"),

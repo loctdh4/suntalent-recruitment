@@ -18,13 +18,14 @@ import { InterviewFilters } from "@/components/interviews/interview-filters";
 import { FiltersPendingProvider, PendingArea } from "@/components/filters-pending";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { formatJobCode } from "@/lib/format";
+import { resolvePage } from "@/lib/pagination";
 
 export default async function InterviewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ day?: string; q?: string }>;
+  searchParams: Promise<{ day?: string; q?: string; page?: string }>;
 }) {
-  const { day, q } = await searchParams;
+  const { day, q, page } = await searchParams;
   const user = await getCurrentUser();
   const canManage = CANDIDATE_MANAGER_ROLES.includes(
     (user?.role ?? "") as (typeof CANDIDATE_MANAGER_ROLES)[number],
@@ -140,7 +141,11 @@ export default async function InterviewsPage({
       return aUp ? ta - tb : tb - ta;
     });
 
-  const rows: InterviewRow[] = sorted.map((r) => ({
+  // Lọc/sắp xếp làm trong JS nên cắt trang cũng ở đây.
+  const pageInfo = resolvePage(page, sorted.length);
+  const rows: InterviewRow[] = sorted
+    .slice(pageInfo.offset, pageInfo.offset + pageInfo.limit)
+    .map((r) => ({
     appId: r.appId,
     candidateId: r.candidateId,
     name: r.name ?? r.email ?? "Ứng viên",
@@ -172,7 +177,7 @@ export default async function InterviewsPage({
       <FiltersPendingProvider>
         <InterviewFilters today={today} />
         <PendingArea fallback={<TableSkeleton cols={8} />}>
-          <InterviewsTable rows={rows} canManage={canManage} />
+          <InterviewsTable rows={rows} canManage={canManage} pageInfo={pageInfo} />
         </PendingArea>
       </FiltersPendingProvider>
     </div>

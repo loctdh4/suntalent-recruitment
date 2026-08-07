@@ -38,6 +38,18 @@ export function formatTime(d: Date | string | number): string {
   return timeFmt.format(new Date(d));
 }
 
+/** Hôm nay theo giờ VN, dạng "YYYY-MM-DD" — dùng cho `<input type="date">`. */
+const ymdVN = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Ho_Chi_Minh",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function todayVN(): string {
+  return ymdVN.format(new Date());
+}
+
 /** Mã job hiển thị: 1 → "00001"; chưa có mã → "—". */
 export function formatJobCode(n: number | null | undefined): string {
   return n == null || Number.isNaN(n) ? "—" : String(n).padStart(5, "0");

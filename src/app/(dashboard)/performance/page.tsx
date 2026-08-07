@@ -81,7 +81,7 @@ async function PerformanceBody({ period }: { period: Period }) {
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Đối tác mới" value={String(totals.newClients)} />
-        <StatCard label="Vị trí mở mới" value={String(totals.newJobs)} />
+        <StatCard label="Vị trí kí mới" value={String(totals.newJobs)} />
         <StatCard label="CV thêm mới" value={String(totals.newCvs)} />
         <StatCard label="Ứng viên nhận việc" value={String(totals.hired)} />
       </div>
@@ -110,7 +110,7 @@ async function PerformanceBody({ period }: { period: Period }) {
             Team Sales ({sales.length})
           </CardTitle>
           <CardDescription>
-            Tính theo đối tác mang về và vị trí do mình sở hữu.
+            Tính theo đối tác mang về và vị trí do mình sở hữu, ghi nhận vào tháng kí hợp đồng.
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -119,7 +119,7 @@ async function PerformanceBody({ period }: { period: Period }) {
               <TableRow>
                 <TableHead className="min-w-56">Thành viên</TableHead>
                 <TableHead className="text-right">Đối tác</TableHead>
-                <TableHead className="text-right">Vị trí mở</TableHead>
+                <TableHead className="text-right">Vị trí kí</TableHead>
                 <TableHead className="text-right">Nhu cầu</TableHead>
                 <TableHead className="text-right">Pipeline</TableHead>
                 <TableHead className="text-right">Nhận việc</TableHead>

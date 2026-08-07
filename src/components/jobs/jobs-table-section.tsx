@@ -39,6 +39,8 @@ import { SortHeader } from "@/components/jobs/sort-header";
 import { ClickableRow } from "@/components/clickable-row";
 import { getJobAlertReasons } from "@/lib/jobs/alert";
 import { formatDate, formatJobCode } from "@/lib/format";
+import { resolvePage } from "@/lib/pagination";
+import { Pagination } from "@/components/pagination";
 
 function vnd(n: number | null) {
   return n == null ? "—" : n.toLocaleString("vi-VN") + "₫";
@@ -58,6 +60,7 @@ export type JobsTableFilters = {
   dir?: string;
   cmin?: string;
   cmax?: string;
+  page?: string;
 };
 
 export async function JobsTableSection({
@@ -75,7 +78,7 @@ export async function JobsTableSection({
   restrictRecruiterId?: string;
   restrictOwnerId?: string;
 }) {
-  const { q, sale, hr, status, client, priority, loc, ind, alert, sort, dir, cmin, cmax } =
+  const { q, sale, hr, status, client, priority, loc, ind, alert, sort, dir, cmin, cmax, page } =
     filters;
 
   const conds: SQL[] = [];
@@ -128,7 +131,9 @@ export async function JobsTableSection({
     );
   }
 
-  const rows = await db
+  // 4 query độc lập nhau → gọi song song thay vì nối tiếp.
+  const [rows, appCounts, hiredByJob, recRows] = await Promise.all([
+    db
     .select({
       id: jobs.id,
       code: jobs.code,
@@ -143,38 +148,41 @@ export async function JobsTableSection({
       ownerName: profiles.fullName,
       ownerEmail: profiles.email,
       createdAt: jobs.createdAt,
+      signedAt: jobs.signedAt,
     })
     .from(jobs)
     .leftJoin(clients, eq(jobs.clientId, clients.id))
     .leftJoin(profiles, eq(jobs.ownerId, profiles.id))
     .where(conds.length ? and(...conds) : undefined)
-    .orderBy(desc(jobs.createdAt));
+    .orderBy(desc(jobs.signedAt)),
+    // Số ứng viên trong pipeline + HR (recruiter) được giao, theo từng job.
+    db
+      .select({ jobId: applications.jobId, n: count() })
+      .from(applications)
+      .groupBy(applications.jobId),
+    db
+      .select({ jobId: applications.jobId, n: count() })
+      .from(applications)
+      .where(eq(applications.stage, "hired"))
+      .groupBy(applications.jobId),
+    db
+      .select({
+        jobId: jobRecruiters.jobId,
+        name: profiles.fullName,
+        email: profiles.email,
+      })
+      .from(jobRecruiters)
+      .innerJoin(profiles, eq(jobRecruiters.recruiterId, profiles.id)),
+  ]);
 
-  // Mặc định & khi sort theo ngày: ngày mới nhất lên đầu; bấm lần nữa đảo chiều.
-  const asc = sort === "created" && dir === "asc";
+  // Mặc định & khi sort theo ngày kí: mới nhất lên đầu; bấm lần nữa đảo chiều.
+  // signedAt là chuỗi "YYYY-MM-DD" nên so sánh trực tiếp được.
+  const asc = sort === "signed" && dir === "asc";
   rows.sort((a, b) => {
-    const t = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    const t = a.signedAt.localeCompare(b.signedAt);
     return asc ? t : -t;
   });
 
-  // Số ứng viên trong pipeline + HR (recruiter) được giao, theo từng job.
-  const appCounts = await db
-    .select({ jobId: applications.jobId, n: count() })
-    .from(applications)
-    .groupBy(applications.jobId);
-  const hiredByJob = await db
-    .select({ jobId: applications.jobId, n: count() })
-    .from(applications)
-    .where(eq(applications.stage, "hired"))
-    .groupBy(applications.jobId);
-  const recRows = await db
-    .select({
-      jobId: jobRecruiters.jobId,
-      name: profiles.fullName,
-      email: profiles.email,
-    })
-    .from(jobRecruiters)
-    .innerJoin(profiles, eq(jobRecruiters.recruiterId, profiles.id));
   const appMap = new Map(appCounts.map((r) => [r.jobId, r.n]));
   const hiredMap = new Map(hiredByJob.map((r) => [r.jobId, r.n]));
   const hrMap = new Map<string, string[]>();
@@ -204,6 +212,10 @@ export async function JobsTableSection({
 
   const hasFilter = !!(q || sale || hr || status || client || priority || loc || ind || alert);
 
+  // Lọc "cần chú ý" và sắp xếp làm trong JS nên cắt trang cũng làm ở đây.
+  const pageInfo = resolvePage(page, visibleRows.length);
+  const pageRows = visibleRows.slice(pageInfo.offset, pageInfo.offset + pageInfo.limit);
+
   if (visibleRows.length === 0) {
     return (
       <Card>
@@ -230,7 +242,7 @@ export async function JobsTableSection({
           <TableHeader>
             <TableRow>
               <TableHead>
-                <SortHeader label="Ngày tạo" sortKey="created" />
+                <SortHeader label="Ngày kí" sortKey="signed" />
               </TableHead>
               <TableHead>Vị trí</TableHead>
               <TableHead>Khách hàng</TableHead>
@@ -245,7 +257,7 @@ export async function JobsTableSection({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleRows.map((j) => {
+            {pageRows.map((j) => {
               const reasons = alertMap.get(j.id) ?? [];
               return (
               <ClickableRow
@@ -258,7 +270,7 @@ export async function JobsTableSection({
                 )}
               >
                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                  {formatDate(j.createdAt)}
+                  {formatDate(j.signedAt)}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-2">
@@ -320,6 +332,7 @@ export async function JobsTableSection({
           </TableBody>
         </Table>
       </CardContent>
+      <Pagination info={pageInfo} label="vị trí" />
     </Card>
   );
 }

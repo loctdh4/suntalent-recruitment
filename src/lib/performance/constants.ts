@@ -31,8 +31,18 @@ export type Period = {
   month: number | null;
   since: Date;
   until: Date;
+  /** Cùng khoảng nhưng dạng ngày dương lịch "YYYY-MM-DD", để so với cột `date`. */
+  sinceDate: string;
+  untilDate: string;
   label: string;
 };
+
+/** "2026-06-01" — tháng 13 tự cuộn sang tháng 1 năm sau. */
+function ymd(year: number, month: number): string {
+  const y = year + Math.floor((month - 1) / 12);
+  const m = ((month - 1) % 12) + 1;
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
 
 /** Chuẩn hóa searchParams `month`/`year` thành kỳ đánh giá; sai/thiếu → tháng hiện tại. */
 export function resolvePeriod(
@@ -49,6 +59,8 @@ export function resolvePeriod(
       month: null,
       since: vnMonthStart(year, 1),
       until: vnMonthStart(year + 1, 1),
+      sinceDate: ymd(year, 1),
+      untilDate: ymd(year + 1, 1),
       label: `Năm ${year}`,
     };
   }
@@ -59,6 +71,8 @@ export function resolvePeriod(
     month,
     since: vnMonthStart(year, month),
     until: vnMonthStart(year, month + 1),
+    sinceDate: ymd(year, month),
+    untilDate: ymd(year, month + 1),
     label: `Tháng ${month}/${year}`,
   };
 }

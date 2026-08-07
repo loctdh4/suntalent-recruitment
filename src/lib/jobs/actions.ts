@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { jobs, jobRecruiters } from "@/lib/db/schema";
 import { embedText, jobProfileText } from "@/lib/ai/embeddings";
 import { presignUpload } from "@/lib/storage";
+import { todayVN } from "@/lib/format";
 import { JOB_MANAGER_ROLES, JOB_STATUS_EDITOR_ROLES } from "./constants";
 
 export type JobActionState = { error?: string; ok?: boolean } | undefined;
@@ -54,6 +55,9 @@ const schema = z.object({
   headcount: z.number().int().positive().default(1),
   contractValue: z.number().int().nonnegative().optional(),
   warrantyMonths: z.number().int().positive().max(60).default(1),
+  signedAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày kí hợp đồng không hợp lệ"),
   salaryMin: z.number().int().nonnegative().optional(),
   salaryMax: z.number().int().nonnegative().optional(),
 });
@@ -76,6 +80,7 @@ function parseJobForm(formData: FormData) {
     headcount: toInt(formData.get("headcount")) ?? 1,
     contractValue: toInt(formData.get("contractValue")),
     warrantyMonths: toInt(formData.get("warrantyMonths")) ?? 1,
+    signedAt: String(formData.get("signedAt") ?? "") || todayVN(),
     salaryMin: toInt(formData.get("salaryMin")),
     salaryMax: toInt(formData.get("salaryMax")),
   });
@@ -107,6 +112,7 @@ export async function createJob(
       headcount: d.headcount,
       contractValue: d.contractValue,
       warrantyMonths: d.warrantyMonths,
+      signedAt: d.signedAt,
       salaryMin: d.salaryMin,
       salaryMax: d.salaryMax,
       description: d.description,
@@ -149,6 +155,7 @@ export async function updateJob(
       headcount: d.headcount,
       contractValue: d.contractValue,
       warrantyMonths: d.warrantyMonths,
+      signedAt: d.signedAt,
       salaryMin: d.salaryMin,
       salaryMax: d.salaryMax,
       description: d.description,

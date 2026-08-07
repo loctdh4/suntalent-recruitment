@@ -41,41 +41,47 @@ export default async function JobsPage({
   const restrictOwnerId = salesOnly ? user?.id : undefined;
   const scoped = hrOnly || salesOnly;
 
-  // Tùy chọn cho filter Sale / HR / Khách hàng (không phụ thuộc bộ lọc).
-  const people = await db
-    .select({ id: profiles.id, name: profiles.fullName, email: profiles.email, role: profiles.role })
-    .from(profiles);
+  // Tùy chọn filter + thống kê tổng: độc lập nhau nên gọi song song
+  // (mỗi round-trip tới DB tốn ~80ms, gọi nối tiếp là cộng dồn).
+  const [
+    people,
+    clientList,
+    industryList,
+    statusRows,
+    [{ headcount }],
+    [{ n: activeApps }],
+    [{ n: hiredApps }],
+  ] = await Promise.all([
+    db
+      .select({
+        id: profiles.id,
+        name: profiles.fullName,
+        email: profiles.email,
+        role: profiles.role,
+      })
+      .from(profiles),
+    db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name),
+    getIndustryNames(),
+    db.select({ status: jobs.status, n: count() }).from(jobs).groupBy(jobs.status),
+    db
+      .select({ headcount: sum(jobs.headcount) })
+      .from(jobs)
+      .where(eq(jobs.status, "open")),
+    db
+      .select({ n: count() })
+      .from(applications)
+      .where(notInArray(applications.stage, ["rejected", "hired"])),
+    db.select({ n: count() }).from(applications).where(eq(applications.stage, "hired")),
+  ]);
+
   const saleOptions = people
     .filter((p) => ["sales", "sales_intern", "admin"].includes(p.role))
     .map((p) => ({ id: p.id, name: p.name ?? p.email }));
   const hrOptions = people
     .filter((p) => ["recruiter", "recruiter_intern", "admin"].includes(p.role))
     .map((p) => ({ id: p.id, name: p.name ?? p.email }));
-  const clientList = await db
-    .select({ id: clients.id, name: clients.name })
-    .from(clients)
-    .orderBy(clients.name);
-  const industryList = await getIndustryNames();
-
-  // Thống kê tổng (không phụ thuộc bộ lọc).
-  const statusRows = await db
-    .select({ status: jobs.status, n: count() })
-    .from(jobs)
-    .groupBy(jobs.status);
   const jobStat = (s: string) => statusRows.find((r) => r.status === s)?.n ?? 0;
   const totalJobs = statusRows.reduce((a, r) => a + r.n, 0);
-  const [{ headcount }] = await db
-    .select({ headcount: sum(jobs.headcount) })
-    .from(jobs)
-    .where(eq(jobs.status, "open"));
-  const [{ n: activeApps }] = await db
-    .select({ n: count() })
-    .from(applications)
-    .where(notInArray(applications.stage, ["rejected", "hired"]));
-  const [{ n: hiredApps }] = await db
-    .select({ n: count() })
-    .from(applications)
-    .where(eq(applications.stage, "hired"));
 
   // Key đổi mỗi khi bộ lọc đổi → Suspense hiện skeleton tới khi bảng mới xong.
   const tableKey = JSON.stringify(filters);

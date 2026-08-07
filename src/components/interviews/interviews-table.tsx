@@ -42,6 +42,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatDate, formatTime, formatJobCode } from "@/lib/format";
+import { Pagination } from "@/components/pagination";
+import type { PageInfo } from "@/lib/pagination";
 import { relBadge, toLocalInput } from "@/components/jobs/interview-schedule";
 import { AddToCalendar } from "@/components/calendar/add-to-calendar";
 import {
@@ -93,9 +95,11 @@ function InfoRow({
 export function InterviewsTable({
   rows,
   canManage = false,
+  pageInfo,
 }: {
   rows: InterviewRow[];
   canManage?: boolean;
+  pageInfo?: PageInfo;
 }) {
   const router = useRouter();
   const [active, setActive] = useState<InterviewRow | null>(null);
@@ -275,6 +279,7 @@ export function InterviewsTable({
           </Table>
         )}
       </CardContent>
+      {pageInfo && <Pagination info={pageInfo} label="buổi PV" />}
 
       {/* Phiếu lịch PV */}
       <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>

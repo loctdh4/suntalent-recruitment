@@ -19,7 +19,8 @@ export type DealRow = {
   clientName: string;
   /** business | individual → "Doanh nghiệp" | "Cá nhân". */
   clientType: string;
-  signedAt: Date;
+  /** Ngày kí hợp đồng, dạng "YYYY-MM-DD". */
+  signedAt: string;
   headcount: number;
   title: string;
   /** Giá hợp đồng 1 vị trí; `null` = trả sau / chưa chốt. */
@@ -63,7 +64,7 @@ export async function getMember(id: string): Promise<MemberInfo | null> {
  * Bảng doanh thu của một thành viên trong kỳ — tương đương file
  * "DOANH THU THÁNG x/yyyy" đang dùng thủ công.
  *
- * Lọc theo "ngày kí" = ngày tạo vị trí. Sale lấy vị trí mình sở hữu,
+ * Lọc theo ngày kí hợp đồng (`jobs.signed_at`). Sale lấy vị trí mình sở hữu,
  * HR lấy vị trí được giao phụ trách.
  */
 export async function getSaleDetail(
@@ -93,7 +94,7 @@ export async function getSaleDetail(
       contractValue: jobs.contractValue,
       warrantyMonths: jobs.warrantyMonths,
       status: jobs.status,
-      createdAt: jobs.createdAt,
+      signedAt: jobs.signedAt,
       clientId: clients.id,
       clientName: clients.name,
       clientType: clients.type,
@@ -104,11 +105,12 @@ export async function getSaleDetail(
     .where(
       and(
         ownedByMember,
-        gte(jobs.createdAt, period.since),
-        lt(jobs.createdAt, period.until),
+        // Doanh thu ghi nhận theo ngày kí hợp đồng, không phải ngày tạo bản ghi.
+        gte(jobs.signedAt, period.sinceDate),
+        lt(jobs.signedAt, period.untilDate),
       ),
     )
-    .orderBy(asc(jobs.createdAt), asc(jobs.code));
+    .orderBy(asc(jobs.signedAt), asc(jobs.code));
 
   const jobIds = jobRows.map((j) => j.id);
   const appRows = jobIds.length
@@ -159,7 +161,7 @@ export async function getSaleDetail(
       clientId: j.clientId,
       clientName: j.clientName ?? "(Chưa gán đối tác)",
       clientType: j.clientType ?? "business",
-      signedAt: j.createdAt,
+      signedAt: j.signedAt,
       headcount: j.headcount,
       title: j.title,
       unitValue: j.contractValue,

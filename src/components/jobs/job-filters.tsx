@@ -64,6 +64,8 @@ export function JobFilters({
 
   function pushParams(updates: Record<string, string>) {
     const params = new URLSearchParams(sp.toString());
+    // Đổi bộ lọc/sắp xếp → về trang 1, tránh đứng ở trang không còn dữ liệu.
+    params.delete("page");
     for (const [key, value] of Object.entries(updates)) {
       if (!value || value === "all") params.delete(key);
       else params.set(key, value);
@@ -97,6 +99,7 @@ export function JobFilters({
       });
       const params = new URLSearchParams(sp.toString());
       for (const k of FILTER_KEYS) params.delete(k);
+      params.delete("page");
       router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname);
     });
   }

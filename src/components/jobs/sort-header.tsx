@@ -13,6 +13,8 @@ export function SortHeader({ label, sortKey }: { label: string; sortKey: string 
 
   function toggle() {
     const params = new URLSearchParams(sp.toString());
+    // Đổi bộ lọc/sắp xếp → về trang 1, tránh đứng ở trang không còn dữ liệu.
+    params.delete("page");
     if (!active) {
       params.set("sort", sortKey);
       params.set("dir", "desc");

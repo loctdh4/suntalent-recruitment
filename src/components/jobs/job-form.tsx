@@ -21,6 +21,7 @@ import { ClientQuickAdd } from "@/components/clients/client-quick-add";
 import { JdField } from "@/components/jobs/jd-field";
 import { createJob, updateJob, type JobActionState } from "@/lib/jobs/actions";
 import { JOB_PRIORITY_OPTIONS, WARRANTY_OPTIONS } from "@/lib/jobs/constants";
+import { todayVN } from "@/lib/format";
 
 type ClientOption = { id: string; name: string };
 
@@ -34,6 +35,7 @@ export type JobFormValues = {
   minYears: number | null;
   headcount: number;
   contractValue: number | null;
+  signedAt: string;
   warrantyMonths: number;
   salaryMin: number | null;
   salaryMax: number | null;
@@ -183,6 +185,20 @@ export function JobForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="signedAt">Ngày kí hợp đồng</Label>
+        <Input
+          id="signedAt"
+          name="signedAt"
+          type="date"
+          defaultValue={job?.signedAt ?? todayVN()}
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          Doanh thu tháng của sale ghi nhận theo ngày này.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -79,6 +79,7 @@ export default async function JobDetailPage({
       status: jobs.status,
       headcount: jobs.headcount,
       createdAt: jobs.createdAt,
+      signedAt: jobs.signedAt,
       contractValue: jobs.contractValue,
       salaryMin: jobs.salaryMin,
       salaryMax: jobs.salaryMax,
@@ -226,7 +227,11 @@ export default async function JobDetailPage({
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <CalendarDays className="size-3.5" />
-            Tạo {formatDate(job.createdAt)} ·{" "}
+            {/* Kí cùng ngày tạo (mặc định) thì gộp một vế cho gọn. */}
+            {formatDate(job.signedAt) === formatDate(job.createdAt)
+              ? `Đã tạo và kí hợp đồng ngày ${formatDate(job.signedAt)}`
+              : `Đã tạo ngày ${formatDate(job.createdAt)}, kí hợp đồng ngày ${formatDate(job.signedAt)}`}
+            {" · "}
             {ageDays === 0 ? "hôm nay" : `đã ${ageDays} ngày`}
           </p>
         </div>
@@ -281,6 +286,16 @@ export default async function JobDetailPage({
             </CardContent>
           </Card>
         )}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Ngày kí hợp đồng
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-lg font-semibold">
+            {formatDate(job.signedAt)}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

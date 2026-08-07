@@ -18,6 +18,8 @@ export function InterviewFilters({ today }: { today: string }) {
 
   function push(updates: Record<string, string>) {
     const params = new URLSearchParams(sp.toString());
+    // Đổi bộ lọc/sắp xếp → về trang 1, tránh đứng ở trang không còn dữ liệu.
+    params.delete("page");
     for (const [k, v] of Object.entries(updates)) {
       if (!v) params.delete(k);
       else params.set(k, v);

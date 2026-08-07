@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
 import { requireRole } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { clients, profiles } from "@/lib/db/schema";
@@ -7,6 +7,7 @@ import { ClientsTable } from "@/components/clients/clients-table";
 import { ClientFilters } from "@/components/clients/client-filters";
 import { FiltersPendingProvider, PendingArea } from "@/components/filters-pending";
 import { TableSkeleton } from "@/components/table-skeleton";
+import { resolvePage } from "@/lib/pagination";
 
 export default async function ClientsPage({
   searchParams,
@@ -16,10 +17,11 @@ export default async function ClientsPage({
     loc?: string;
     type?: string;
     owner?: string;
+    page?: string;
   }>;
 }) {
   await requireRole([...CLIENT_MANAGER_ROLES]);
-  const { q, loc, type, owner } = await searchParams;
+  const { q, loc, type, owner, page } = await searchParams;
 
   const conds: SQL[] = [];
   if (q?.trim()) {
@@ -39,13 +41,17 @@ export default async function ClientsPage({
   }
   if (owner) conds.push(eq(clients.createdBy, owner));
 
-  // Danh sách người phụ trách (sale/manager/admin) cho bộ lọc.
-  const owners = (
-    await db
+  // Danh sách người phụ trách cho bộ lọc + đếm số dòng khớp: độc lập nhau.
+  const where = conds.length ? and(...conds) : undefined;
+  const [ownerRows, [{ n: matched }]] = await Promise.all([
+    db
       .select({ id: profiles.id, name: profiles.fullName, email: profiles.email })
       .from(profiles)
-      .where(inArray(profiles.role, ["sales", "sales_intern", "admin"]))
-  ).map((p) => ({ id: p.id, name: p.name ?? p.email }));
+      .where(inArray(profiles.role, ["sales", "sales_intern", "admin"])),
+    db.select({ n: count() }).from(clients).where(where),
+  ]);
+  const owners = ownerRows.map((p) => ({ id: p.id, name: p.name ?? p.email }));
+  const pageInfo = resolvePage(page, matched);
 
   const rows = await db
     .select({
@@ -60,8 +66,10 @@ export default async function ClientsPage({
     })
     .from(clients)
     .leftJoin(profiles, eq(clients.createdBy, profiles.id))
-    .where(conds.length ? and(...conds) : undefined)
-    .orderBy(desc(clients.createdAt));
+    .where(where)
+    .orderBy(desc(clients.createdAt))
+    .limit(pageInfo.limit)
+    .offset(pageInfo.offset);
 
   return (
     <div className="space-y-6">
@@ -75,7 +83,11 @@ export default async function ClientsPage({
       <FiltersPendingProvider>
         <ClientFilters owners={owners} />
         <PendingArea fallback={<TableSkeleton cols={6} />}>
-          <ClientsTable clients={rows} query={q || loc || type || owner || ""} />
+          <ClientsTable
+            clients={rows}
+            query={q || loc || type || owner || ""}
+            pageInfo={pageInfo}
+          />
         </PendingArea>
       </FiltersPendingProvider>
     </div>

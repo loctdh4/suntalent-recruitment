@@ -23,7 +23,7 @@ type Member = { id: string; name: string; email: string; role: string };
 export type SalesRow = Member & {
   /** Đối tác mang về trong kỳ. */
   newClients: number;
-  /** Vị trí tự tạo trong kỳ. */
+  /** Vị trí kí hợp đồng trong kỳ. */
   newJobs: number;
   /** Tổng nhu cầu tuyển của các vị trí đó. */
   headcount: number;
@@ -34,7 +34,7 @@ export type SalesRow = Member & {
   hired: number;
   /** Doanh thu ước tính = giá hợp đồng × số ứng viên nhận việc. */
   revenue: number;
-  /** hired / headcount (chỉ tính vị trí tạo trong kỳ). */
+  /** hired / headcount (chỉ tính vị trí kí trong kỳ). */
   fillRate: number | null;
   score: number;
 };
@@ -102,14 +102,17 @@ function scoreOf(
  * Tổng hợp hiệu suất team Sales & HR (gồm cả intern) trong một kỳ.
  *
  * Quy tắc quy công:
- * - Sales: theo vị trí mình sở hữu (`jobs.owner_id`) + đối tác mình tạo.
+ * - Sales: theo vị trí mình sở hữu (`jobs.owner_id`, tính vào tháng kí hợp
+ *   đồng) + đối tác mình tạo.
  * - HR: theo vị trí được giao (`job_recruiters`) + CV mình thêm.
  *   Vị trí giao cho nhiều HR thì mỗi người được tính đủ (công dùng chung).
  */
 export async function getPerformance(period: Period): Promise<PerformanceData> {
-  const { since, until } = period;
+  const { since, until, sinceDate, untilDate } = period;
   const now = new Date();
   const inRange = (d: Date | null | undefined) => !!d && d >= since && d < until;
+  // Vị trí tính theo ngày kí hợp đồng (cột `date`, so chuỗi "YYYY-MM-DD").
+  const signedInRange = (d: string) => d >= sinceDate && d < untilDate;
   // Buổi PV chỉ tính khi đã diễn ra (lịch tương lai trong tháng chưa tính công).
   const happened = (d: Date | null | undefined) => inRange(d) && d! <= now;
 
@@ -129,7 +132,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
           ownerId: jobs.ownerId,
           headcount: jobs.headcount,
           contractValue: jobs.contractValue,
-          createdAt: jobs.createdAt,
+          signedAt: jobs.signedAt,
         })
         .from(jobs),
       db
@@ -198,7 +201,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
     if (v) v.newCvs += r.n;
   }
   for (const j of jobRows) {
-    if (!inRange(j.createdAt)) continue;
+    if (!signedInRange(j.signedAt)) continue;
     const v = bump(j.ownerId);
     if (v) {
       v.newJobs += 1;
@@ -222,7 +225,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
   };
   for (const r of clientRows) totals.newClients += r.n;
   for (const r of cvRows) totals.newCvs += r.n;
-  for (const j of jobRows) if (inRange(j.createdAt)) totals.newJobs += 1;
+  for (const j of jobRows) if (signedInRange(j.signedAt)) totals.newJobs += 1;
 
   for (const app of appRows) {
     const job = jobById.get(app.jobId);
@@ -336,7 +339,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
 export async function getSelectableYears(): Promise<number[]> {
   const rows = await Promise.all([
     db.select({ v: min(candidates.createdAt) }).from(candidates),
-    db.select({ v: min(jobs.createdAt) }).from(jobs),
+    db.select({ v: min(jobs.signedAt) }).from(jobs),
     db.select({ v: min(clients.createdAt) }).from(clients),
     db.select({ v: min(applications.createdAt) }).from(applications),
   ]);
@@ -344,7 +347,9 @@ export async function getSelectableYears(): Promise<number[]> {
   const years = rows
     .map(([r]) => r?.v)
     .filter((v): v is NonNullable<typeof v> => v != null)
-    .map((v) => new Date(v).getFullYear())
+    // `signed_at` là cột date → trả về chuỗi "YYYY-MM-DD"; đọc năm trực tiếp
+    // để không lệch khi server chạy ở múi giờ âm.
+    .map((v) => (typeof v === "string" ? Number(v.slice(0, 4)) : v.getFullYear()))
     .filter((y) => Number.isFinite(y));
   const earliest = years.length ? Math.min(...years, thisYear) : thisYear;
   return Array.from({ length: thisYear - earliest + 1 }, (_, i) => thisYear - i);

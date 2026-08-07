@@ -35,13 +35,17 @@ import {
 import { deleteClient } from "@/lib/clients/actions";
 import { CLIENT_TYPE_LABEL } from "@/lib/clients/constants";
 import { ClientFormDialog, type ClientRow } from "./client-form-dialog";
+import { Pagination } from "@/components/pagination";
+import type { PageInfo } from "@/lib/pagination";
 
 export function ClientsTable({
   clients,
   query = "",
+  pageInfo,
 }: {
   clients: ClientRow[];
   query?: string;
+  pageInfo?: PageInfo;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -155,6 +159,7 @@ export function ClientsTable({
           </Table>
         )}
       </CardContent>
+      {pageInfo && <Pagination info={pageInfo} label="đối tác" />}
     </Card>
   );
 }

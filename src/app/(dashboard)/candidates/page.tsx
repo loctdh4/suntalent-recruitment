@@ -33,6 +33,8 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { ClickableRow } from "@/components/clickable-row";
 import { formatDate } from "@/lib/format";
 import { getIndustryNames } from "@/lib/industries/queries";
+import { resolvePage } from "@/lib/pagination";
+import { Pagination } from "@/components/pagination";
 
 const STATUS_VALUES = ["parsing", "ready", "error"] as const;
 
@@ -44,9 +46,10 @@ export default async function CandidatesPage({
     status?: string;
     loc?: string;
     ind?: string;
+    page?: string;
   }>;
 }) {
-  const { q, status, loc, ind } = await searchParams;
+  const { q, status, loc, ind, page } = await searchParams;
   const user = await getCurrentUser();
   const canManage = CANDIDATE_MANAGER_ROLES.includes(
     (user?.role ?? "") as (typeof CANDIDATE_MANAGER_ROLES)[number],
@@ -70,6 +73,28 @@ export default async function CandidatesPage({
   if (loc?.trim()) conds.push(ilike(candidates.location, `%${loc.trim()}%`));
   if (ind?.trim()) conds.push(eq(candidates.industry, ind.trim()));
 
+  // Bước 1 — đếm số dòng khớp lọc (để biết số trang) cùng lúc với danh sách
+  // ngành và các thống kê tổng; tất cả độc lập nhau nên gọi song song.
+  const where = conds.length ? and(...conds) : undefined;
+  const [
+    [{ n: matched }],
+    industryList,
+    [{ n: totalCand }],
+    [{ n: engagedCand }],
+    [{ n: hiredCand }],
+  ] = await Promise.all([
+    db.select({ n: count() }).from(candidates).where(where),
+    getIndustryNames(),
+    db.select({ n: count() }).from(candidates),
+    db
+      .select({ n: count() })
+      .from(applications)
+      .where(notInArray(applications.stage, ["rejected", "hired"])),
+    db.select({ n: count() }).from(applications).where(eq(applications.stage, "hired")),
+  ]);
+  const pageInfo = resolvePage(page, matched);
+
+  // Bước 2 — tải đúng 1 trang (cần pageInfo nên phải chờ bước 1).
   const rows = await db
     .select({
       id: candidates.id,
@@ -83,10 +108,12 @@ export default async function CandidatesPage({
       updatedAt: candidates.updatedAt,
     })
     .from(candidates)
-    .where(conds.length ? and(...conds) : undefined)
-    .orderBy(desc(candidates.createdAt));
+    .where(where)
+    .orderBy(desc(candidates.createdAt))
+    .limit(pageInfo.limit)
+    .offset(pageInfo.offset);
 
-  // Vị trí ứng viên đang ứng tuyển (ưu tiên giai đoạn chưa "Không phù hợp").
+  // Bước 3 — vị trí đang ứng tuyển của đúng 20 ứng viên trên trang.
   const ids = rows.map((r) => r.id);
   const appRows = ids.length
     ? await db
@@ -112,18 +139,6 @@ export default async function CandidatesPage({
 
   const hasParsing = rows.some((r) => r.status === "parsing");
   const hasFilter = Boolean(q?.trim() || status || loc || ind);
-  const industryList = await getIndustryNames();
-
-  // Thống kê tổng (không phụ thuộc bộ lọc).
-  const [{ n: totalCand }] = await db.select({ n: count() }).from(candidates);
-  const [{ n: engagedCand }] = await db
-    .select({ n: count() })
-    .from(applications)
-    .where(notInArray(applications.stage, ["rejected", "hired"]));
-  const [{ n: hiredCand }] = await db
-    .select({ n: count() })
-    .from(applications)
-    .where(eq(applications.stage, "hired"));
 
   return (
     <div className="space-y-6">
@@ -295,6 +310,7 @@ export default async function CandidatesPage({
               </TableBody>
             </Table>
             </CardContent>
+            <Pagination info={pageInfo} label="ứng viên" />
           </Card>
         </>
       )}
