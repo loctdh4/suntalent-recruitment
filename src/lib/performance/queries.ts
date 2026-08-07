@@ -8,12 +8,7 @@ import {
   jobs,
   profiles,
 } from "@/lib/db/schema";
-import {
-  HR_WEIGHTS,
-  SALES_WEIGHTS,
-  currentVnMonth,
-  type Period,
-} from "./constants";
+import { HR_WEIGHTS, currentVnMonth, type Period } from "./constants";
 
 const SALES_ROLES = ["sales", "sales_intern"];
 const HR_ROLES = ["recruiter", "recruiter_intern"];
@@ -32,11 +27,13 @@ export type SalesRow = Member & {
   /** Buổi PV khách hàng đã diễn ra trong kỳ. */
   interviews: number;
   hired: number;
-  /** Doanh thu ước tính = giá hợp đồng × số ứng viên nhận việc. */
+  /**
+   * Doanh thu ước tính hợp đồng kí trong kỳ = giá hợp đồng × số lượng.
+   * Không tính vị trí đã đóng (khách hủy) vì không thu được tiền.
+   */
   revenue: number;
   /** hired / headcount (chỉ tính vị trí kí trong kỳ). */
   fillRate: number | null;
-  score: number;
 };
 
 export type HrRow = Member & {
@@ -103,7 +100,7 @@ function scoreOf(
  *
  * Quy tắc quy công:
  * - Sales: theo vị trí mình sở hữu (`jobs.owner_id`, tính vào tháng kí hợp
- *   đồng) + đối tác mình tạo.
+ *   đồng) + đối tác mình tạo. Xếp hạng theo doanh thu ước tính, không chấm điểm.
  * - HR: theo vị trí được giao (`job_recruiters`) + CV mình thêm.
  *   Vị trí giao cho nhiều HR thì mỗi người được tính đủ (công dùng chung).
  */
@@ -132,6 +129,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
           ownerId: jobs.ownerId,
           headcount: jobs.headcount,
           contractValue: jobs.contractValue,
+          status: jobs.status,
           signedAt: jobs.signedAt,
         })
         .from(jobs),
@@ -206,6 +204,11 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
     if (v) {
       v.newJobs += 1;
       v.headcount += j.headcount;
+      // Doanh thu ước tính = giá hợp đồng × số lượng của hợp đồng kí trong kỳ.
+      // Bỏ vị trí đã đóng (khách hủy) vì không thu được tiền.
+      if (j.status !== "closed") {
+        v.revenue += (j.contractValue ?? 0) * j.headcount;
+      }
     }
   }
   for (const a of assignRows) {
@@ -225,7 +228,13 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
   };
   for (const r of clientRows) totals.newClients += r.n;
   for (const r of cvRows) totals.newCvs += r.n;
-  for (const j of jobRows) if (signedInRange(j.signedAt)) totals.newJobs += 1;
+  for (const j of jobRows) {
+    if (!signedInRange(j.signedAt)) continue;
+    totals.newJobs += 1;
+    if (j.status !== "closed") {
+      totals.revenue += (j.contractValue ?? 0) * j.headcount;
+    }
+  }
 
   for (const app of appRows) {
     const job = jobById.get(app.jobId);
@@ -242,10 +251,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
 
     if (applied) totals.apps += 1;
     if (interviewed) totals.interviews += 1;
-    if (hired) {
-      totals.hired += 1;
-      totals.revenue += job.contractValue ?? 0;
-    }
+    if (hired) totals.hired += 1;
 
     for (const id of owners) {
       const v = bump(id);
@@ -255,10 +261,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
         v.interviews += 1;
         if (app.attended) v.attended += 1;
       }
-      if (hired) {
-        v.hired += 1;
-        if (id === job.ownerId) v.revenue += job.contractValue ?? 0;
-      }
+      if (hired) v.hired += 1;
     }
   }
 
@@ -316,15 +319,12 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
       keys.map((k) => [k, Math.max(0, ...rows.map((r) => Number(r[k]) || 0))]),
     );
 
-  const salesMax = maxOf(salesRaw, Object.keys(SALES_WEIGHTS));
   const hrMax = maxOf(hrRaw, Object.keys(HR_WEIGHTS));
 
-  const sales: SalesRow[] = salesRaw
-    .map((r) => ({
-      ...r,
-      score: scoreOf(r as unknown as Record<string, number>, salesMax, SALES_WEIGHTS),
-    }))
-    .sort((a, b) => b.score - a.score || b.hired - a.hired);
+  // Sales xếp theo doanh thu ước tính đem về trong kỳ, không chấm điểm.
+  const sales: SalesRow[] = salesRaw.sort(
+    (a, b) => b.revenue - a.revenue || b.hired - a.hired,
+  );
   const hr: HrRow[] = hrRaw
     .map((r) => ({
       ...r,

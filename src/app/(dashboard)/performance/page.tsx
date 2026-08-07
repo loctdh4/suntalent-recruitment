@@ -110,7 +110,8 @@ async function PerformanceBody({ period }: { period: Period }) {
             Team Sales ({sales.length})
           </CardTitle>
           <CardDescription>
-            Tính theo đối tác mang về và vị trí do mình sở hữu, ghi nhận vào tháng kí hợp đồng.
+            Xếp theo doanh thu ước tính đem về trong kỳ. Tính theo vị trí do mình
+            sở hữu, ghi nhận vào tháng kí hợp đồng.
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -125,13 +126,12 @@ async function PerformanceBody({ period }: { period: Period }) {
                 <TableHead className="text-right">Nhận việc</TableHead>
                 <TableHead className="text-right">Lấp đầy</TableHead>
                 <TableHead className="text-right">Doanh thu ƯT</TableHead>
-                <TableHead className="min-w-32">Điểm</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sales.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                     Chưa có thành viên Sales.
                   </TableCell>
                 </TableRow>
@@ -156,11 +156,8 @@ async function PerformanceBody({ period }: { period: Period }) {
                   <TableCell className="text-right tabular-nums">
                     {pct(r.fillRate)}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="text-right font-semibold tabular-nums">
                     {vnd(r.revenue)}
-                  </TableCell>
-                  <TableCell>
-                    <ScoreBar score={r.score} />
                   </TableCell>
                 </ClickableRow>
               ))}
@@ -239,19 +236,21 @@ async function PerformanceBody({ period }: { period: Period }) {
       <Card className="bg-muted/30">
         <CardContent className="space-y-2 p-5 text-sm text-muted-foreground">
           <p className="flex items-center gap-2 font-medium text-foreground">
-            <Info className="size-4" /> Cách tính điểm
-          </p>
-          <p>
-            Mỗi chỉ số được chuẩn hóa theo người dẫn đầu nhóm rồi nhân trọng số, quy về
-            thang 0–100. <b className="text-foreground">Sales</b>: nhận việc 35%, doanh
-            thu 25%, đối tác 20%, vị trí mở 20%.{" "}
-            <b className="text-foreground">HR</b>: nhận việc 35%, CV mới 25%, buổi PV
-            20%, pipeline 20%.
+            <Info className="size-4" /> Cách xếp hạng
           </p>
           <p className="flex items-start gap-2">
             <HandCoins className="mt-0.5 size-4 shrink-0" />
-            Doanh thu ước tính = giá hợp đồng của vị trí × số ứng viên đã nhận việc; chỉ
-            quy cho Sale sở hữu vị trí.
+            <span>
+              <b className="text-foreground">Sales</b> xếp theo doanh thu ước tính, không
+              chấm điểm. Doanh thu ước tính = giá hợp đồng × số lượng của các vị trí kí
+              trong kỳ, <b className="text-foreground">không tính vị trí đã đóng</b>{" "}
+              (khách hủy nên không thu được tiền). Chỉ quy cho Sale sở hữu vị trí.
+            </span>
+          </p>
+          <p>
+            <b className="text-foreground">HR</b> chấm điểm 0–100: mỗi chỉ số chuẩn hóa
+            theo người dẫn đầu nhóm rồi nhân trọng số — nhận việc 35%, CV mới 25%, buổi
+            PV 20%, pipeline 20%.
           </p>
           <p>
             Một vị trí giao cho nhiều HR thì mỗi người được tính đủ số liệu của vị trí

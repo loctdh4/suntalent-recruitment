@@ -27,6 +27,11 @@ export type DealRow = {
   unitValue: number | null;
   /** unitValue × headcount; `null` khi chưa chốt giá. */
   revenue: number | null;
+  /**
+   * Vị trí đã đóng (khách hủy) → không cộng vào doanh thu ước tính,
+   * khớp với cách tính ở trang hiệu suất.
+   */
+  jobClosed: boolean;
   /** Doanh thu đã ghi nhận = unitValue × số ứng viên đã nhận việc. */
   earned: number;
   status: DealStatus;
@@ -166,6 +171,7 @@ export async function getSaleDetail(
       title: j.title,
       unitValue: j.contractValue,
       revenue: j.contractValue == null ? null : j.contractValue * j.headcount,
+      jobClosed: j.status === "closed",
       earned: (j.contractValue ?? 0) * hired,
       status,
       notes: jobEventLog(appRows.filter((a) => a.jobId === j.id)),
@@ -180,7 +186,7 @@ export async function getSaleDetail(
     rows,
     totals: {
       headcount: rows.reduce((a, r) => a + r.headcount, 0),
-      revenue: rows.reduce((a, r) => a + (r.revenue ?? 0), 0),
+      revenue: rows.reduce((a, r) => a + (r.jobClosed ? 0 : (r.revenue ?? 0)), 0),
       earned: rows.reduce((a, r) => a + r.earned, 0),
       hired: rows.reduce((a, r) => a + r.hired, 0),
     },

@@ -96,6 +96,11 @@ export function RevenueSheet({
                 <TableCell className="text-right tabular-nums">
                   {r.revenue == null ? (
                     <span className="text-muted-foreground">Trả sau</span>
+                  ) : r.jobClosed ? (
+                    // Vị trí đã đóng: hiện giá nhưng không cộng vào tổng.
+                    <span className="text-muted-foreground line-through">
+                      {vnd(r.revenue)}
+                    </span>
                   ) : (
                     vnd(r.revenue)
                   )}
@@ -158,7 +163,7 @@ export function RevenueSheet({
                   {vnd(totals.revenue)}
                 </TableCell>
                 <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                  Đã ghi nhận (ứng viên nhận việc):{" "}
+                  Không tính vị trí đã đóng · đã ghi nhận (ứng viên nhận việc):{" "}
                   <b className="text-foreground">{vnd(totals.earned)}</b> · {totals.hired}/
                   {totals.headcount} nhân sự
                 </TableCell>

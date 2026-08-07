@@ -91,16 +91,10 @@ export function isIntern(role: string) {
 }
 
 /**
- * Trọng số điểm hiệu suất. Mỗi chỉ số được chuẩn hóa theo người dẫn đầu nhóm
- * rồi nhân trọng số, quy về thang 0–100 (100 = dẫn đầu mọi chỉ số).
+ * Trọng số điểm hiệu suất của HR. Mỗi chỉ số được chuẩn hóa theo người dẫn
+ * đầu nhóm rồi nhân trọng số, quy về thang 0–100 (100 = dẫn đầu mọi chỉ số).
+ * Sales không chấm điểm — xếp theo doanh thu ước tính đem về trong kỳ.
  */
-export const SALES_WEIGHTS = {
-  hired: 0.35,
-  revenue: 0.25,
-  newClients: 0.2,
-  newJobs: 0.2,
-};
-
 export const HR_WEIGHTS = {
   hired: 0.35,
   newCvs: 0.25,
