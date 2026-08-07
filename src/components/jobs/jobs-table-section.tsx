@@ -147,7 +147,6 @@ export async function JobsTableSection({
       clientName: clients.name,
       ownerName: profiles.fullName,
       ownerEmail: profiles.email,
-      createdAt: jobs.createdAt,
       signedAt: jobs.signedAt,
     })
     .from(jobs)
@@ -192,13 +191,14 @@ export async function JobsTableSection({
     hrMap.set(r.jobId, arr);
   }
 
-  // Cảnh báo job cần chú ý (mở lâu chưa đủ người / chưa có ứng viên / chưa giao HR).
+  // Cảnh báo job cần chú ý, tính từ ngày kí hợp đồng
+  // (kí lâu chưa đủ người / chưa có ứng viên / chưa giao HR).
   const alertMap = new Map(
     rows.map((j) => [
       j.id,
       getJobAlertReasons({
         status: j.status,
-        createdAt: j.createdAt,
+        signedAt: j.signedAt,
         headcount: j.headcount,
         totalApps: appMap.get(j.id) ?? 0,
         hired: hiredMap.get(j.id) ?? 0,
@@ -264,6 +264,8 @@ export async function JobsTableSection({
                 key={j.id}
                 href={`/jobs/${j.id}`}
                 className={cn(
+                  // td tự mang `align-middle`, phải nhắm thẳng vào td mới đè được.
+                  "[&>td]:align-top",
                   reasons.length > 0
                     ? "bg-amber-50 hover:bg-amber-100/70 dark:bg-amber-500/10"
                     : j.priority === "high" && "bg-rose-50/50 dark:bg-rose-500/5",
@@ -272,47 +274,57 @@ export async function JobsTableSection({
                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                   {formatDate(j.signedAt)}
                 </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">
-                      <span className="text-primary">#{formatJobCode(j.code)}</span>{" "}
-                      {j.title}
-                    </Link>
-                    <PriorityBadge priority={j.priority} />
-                    <JobAlertBadge reasons={reasons} />
-                    {j.remote && (
-                      <Badge variant="outline" className="font-normal">
-                        Remote
-                      </Badge>
+                <TableCell className="whitespace-normal">
+                  {/* Giới hạn bề ngang để tiêu đề dài xuống dòng, không kéo giãn bảng. */}
+                  <div className="max-w-88 wrap-break-word">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/jobs/${j.id}`} className="font-medium hover:underline">
+                        <span className="text-primary">#{formatJobCode(j.code)}</span>{" "}
+                        {j.title}
+                      </Link>
+                      <PriorityBadge priority={j.priority} />
+                      <JobAlertBadge reasons={reasons} />
+                      {j.remote && (
+                        <Badge variant="outline" className="font-normal">
+                          Remote
+                        </Badge>
+                      )}
+                    </div>
+                    {reasons.length > 0 && (
+                      <div className="mt-0.5 flex items-start gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="mt-0.5 size-3 shrink-0" />
+                        <span>{reasons.join(" · ")}</span>
+                      </div>
+                    )}
+                    {j.location && !j.remote && (
+                      <div className="text-sm text-muted-foreground">{j.location}</div>
                     )}
                   </div>
-                  {reasons.length > 0 && (
-                    <div className="mt-0.5 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      <AlertTriangle className="size-3 shrink-0" />
-                      <span>{reasons.join(" · ")}</span>
-                    </div>
-                  )}
-                  {j.location && !j.remote && (
-                    <div className="text-sm text-muted-foreground">{j.location}</div>
-                  )}
                 </TableCell>
-                <TableCell>{j.clientName ?? "—"}</TableCell>
+                <TableCell className="whitespace-normal">
+                  <div className="max-w-56 wrap-break-word">
+                    {j.clientName ?? "—"}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
                   {hiredMap.get(j.id) ?? 0}/{j.headcount}
                 </TableCell>
                 <TableCell className="text-right">{appMap.get(j.id) ?? 0}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {j.ownerName ?? j.ownerEmail ?? "—"}
+                <TableCell className="text-sm whitespace-normal text-muted-foreground">
+                  <div className="max-w-36 wrap-break-word">
+                    {j.ownerName ?? j.ownerEmail ?? "—"}
+                  </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {(() => {
                     const names = hrMap.get(j.id);
                     if (!names?.length) return "—";
-                    // Nhiều HR phụ trách → mỗi người một dòng cho dễ đọc.
+                    // Mỗi HR một dòng. Tên dài thì cắt bằng "…" chứ không xuống
+                    // dòng — xuống dòng sẽ trông như hai người khác nhau.
                     return (
-                      <div className="space-y-0.5">
+                      <div className="max-w-44 space-y-0.5">
                         {names.map((n, i) => (
-                          <div key={i} className="whitespace-nowrap">
+                          <div key={i} className="truncate" title={n}>
                             {n}
                           </div>
                         ))}
@@ -321,7 +333,9 @@ export async function JobsTableSection({
                   })()}
                 </TableCell>
                 {canViewContract && (
-                  <TableCell className="text-right">{vnd(j.contractValue)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    {vnd(j.contractValue)}
+                  </TableCell>
                 )}
                 <TableCell>
                   <JobStatusBadge status={j.status} />

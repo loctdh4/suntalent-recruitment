@@ -40,7 +40,7 @@ import { JobRecruiters } from "@/components/jobs/job-recruiters";
 import { JdUpload } from "@/components/jobs/jd-upload";
 import { JobStatusControl } from "@/components/jobs/job-status-control";
 import { JobPriorityControl } from "@/components/jobs/job-priority-control";
-import { getJobAlertReasons } from "@/lib/jobs/alert";
+import { daysSinceSigned, getJobAlertReasons } from "@/lib/jobs/alert";
 import { getIndustryNames } from "@/lib/industries/queries";
 import { formatDate, formatJobCode } from "@/lib/format";
 import { InterviewSchedule } from "@/components/jobs/interview-schedule";
@@ -179,16 +179,15 @@ export default async function JobDetailPage({
 
   const alertReasons = getJobAlertReasons({
     status: job.status,
-    createdAt: job.createdAt,
+    signedAt: job.signedAt,
     headcount: job.headcount,
     totalApps: jobCandidates.length,
     hired: jobCandidates.filter((c) => c.stage === "hired").length,
     hrCount: assigned.length,
   });
 
-  const ageDays = Math.floor(
-    (Date.now() - new Date(job.createdAt).getTime()) / 86_400_000,
-  );
+  // Tuổi job đếm từ ngày kí hợp đồng, cùng mốc với cảnh báo.
+  const ageDays = daysSinceSigned(job.signedAt);
 
   // Ứng viên rảnh (ready, chưa thuộc vị trí nào) để thêm thủ công.
   let available: { id: string; fullName: string | null; email: string | null }[] = [];

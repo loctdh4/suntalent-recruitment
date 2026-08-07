@@ -60,7 +60,7 @@ export default async function OverviewPage() {
       title: jobs.title,
       status: jobs.status,
       headcount: jobs.headcount,
-      createdAt: jobs.createdAt,
+      signedAt: jobs.signedAt,
     })
     .from(jobs)
     .where(eq(jobs.status, "open"));
@@ -96,7 +96,7 @@ export default async function OverviewPage() {
       hr: hrNamesMap.get(j.id) ?? [],
       reasons: getJobAlertReasons({
         status: j.status,
-        createdAt: j.createdAt,
+        signedAt: j.signedAt,
         headcount: j.headcount,
         totalApps: appByJobMap.get(j.id) ?? 0,
         hired: hiredByJobMap.get(j.id) ?? 0,
