@@ -6,11 +6,11 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { assertRole } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
-import { jobs, jobRecruiters } from "@/lib/db/schema";
+import { jobs, jobRecruiters, auditLog } from "@/lib/db/schema";
 import { embedText, jobProfileText } from "@/lib/ai/embeddings";
 import { presignUpload } from "@/lib/storage";
 import { todayVN } from "@/lib/format";
-import { JOB_MANAGER_ROLES, JOB_STATUS_EDITOR_ROLES } from "./constants";
+import { canDeleteJob, JOB_MANAGER_ROLES, JOB_STATUS_EDITOR_ROLES } from "./constants";
 
 export type JobActionState = { error?: string; ok?: boolean } | undefined;
 
@@ -258,6 +258,34 @@ export async function updateJobStatus(
   if (!s.success) return { error: "Trạng thái không hợp lệ" };
   await db.update(jobs).set({ status: s.data }).where(eq(jobs.id, jobId));
   revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/jobs");
+  return { ok: true };
+}
+
+/**
+ * Xóa vị trí tuyển dụng — admin, hoặc sales đã tạo chính vị trí đó.
+ * Kéo theo (cascade) toàn bộ hồ sơ ứng tuyển, phân công recruiter và điểm match.
+ */
+export async function deleteJob(jobId: string): Promise<JobActionState> {
+  const user = await assertRole([...JOB_MANAGER_ROLES]);
+  const [job] = await db
+    .select({ ownerId: jobs.ownerId })
+    .from(jobs)
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+  if (!job) return { error: "Không tìm thấy vị trí" };
+  if (!canDeleteJob(user.role, user.id, job.ownerId)) {
+    return { error: "Chỉ admin hoặc người tạo vị trí mới được xóa." };
+  }
+
+  await db.delete(jobs).where(eq(jobs.id, jobId));
+  await db.insert(auditLog).values({
+    actorId: user.id,
+    action: "delete",
+    entity: "job",
+    entityId: jobId,
+  });
+
   revalidatePath("/jobs");
   return { ok: true };
 }

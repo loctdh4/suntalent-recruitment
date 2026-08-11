@@ -35,7 +35,12 @@ import {
   PipelineBoard,
   type PipelineCard,
 } from "@/components/pipeline/pipeline-board";
-import { JOB_MANAGER_ROLES, JOB_STATUS_EDITOR_ROLES } from "@/lib/jobs/constants";
+import {
+  canDeleteJob,
+  JOB_MANAGER_ROLES,
+  JOB_STATUS_EDITOR_ROLES,
+} from "@/lib/jobs/constants";
+import { JobDeleteButton } from "@/components/jobs/job-delete-button";
 import { JobRecruiters } from "@/components/jobs/job-recruiters";
 import { JdUpload } from "@/components/jobs/jd-upload";
 import { JobStatusControl } from "@/components/jobs/job-status-control";
@@ -92,6 +97,7 @@ export default async function JobDetailPage({
       jdUrl: jobs.jdUrl,
       requiredSkills: jobs.requiredSkills,
       clientId: jobs.clientId,
+      ownerId: jobs.ownerId,
       clientName: clients.name,
     })
     .from(jobs)
@@ -100,6 +106,9 @@ export default async function JobDetailPage({
     .limit(1);
 
   if (!job) notFound();
+
+  // Xóa vị trí: admin, hoặc sales đã tạo chính vị trí này.
+  const canDelete = canDeleteJob(user?.role, user?.id, job.ownerId);
 
   const assigned = await db
     .select({ id: profiles.id, fullName: profiles.fullName, email: profiles.email })
@@ -253,6 +262,13 @@ export default async function JobDetailPage({
                 <Pencil className="size-4" /> Sửa
               </Link>
             </Button>
+          )}
+          {canDelete && (
+            <JobDeleteButton
+              jobId={job.id}
+              jobTitle={job.title}
+              candidateCount={jobCandidates.length}
+            />
           )}
         </div>
       </div>

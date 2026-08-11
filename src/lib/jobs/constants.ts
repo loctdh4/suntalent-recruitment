@@ -1,6 +1,22 @@
 /** Vai trò được phép tạo/quản lý vị trí tuyển dụng. */
 export const JOB_MANAGER_ROLES = ["sales", "sales_intern", "admin"] as const;
 
+/**
+ * Xóa vị trí: admin xóa được mọi vị trí; sales chỉ xóa vị trí do chính mình tạo.
+ * Dùng chung cho cả UI (ẩn nút) lẫn server action (chặn thật).
+ */
+export function canDeleteJob(
+  role: string | undefined,
+  userId: string | undefined,
+  ownerId: string | null | undefined,
+) {
+  if (!role || !userId) return false;
+  if (role === "admin") return true;
+  if (!JOB_MANAGER_ROLES.includes(role as (typeof JOB_MANAGER_ROLES)[number]))
+    return false;
+  return !!ownerId && ownerId === userId;
+}
+
 /** Vai trò được phép cập nhật trạng thái vị trí (hr = recruiter). */
 export const JOB_STATUS_EDITOR_ROLES = [
   "admin",
