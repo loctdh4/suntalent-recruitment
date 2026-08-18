@@ -322,7 +322,9 @@ export default async function CandidatesPage({
                   <TableHead>Ứng viên</TableHead>
                   <TableHead>Vị trí tìm</TableHead>
                   <TableHead>Ngành</TableHead>
-                  <TableHead>Vị trí ứng tuyển</TableHead>
+                  {/* min-w để cột không bị các cột nowrap khác ép về bề rộng tối
+                      thiểu — max-w đơn thuần chỉ chặn trên, không giữ được chỗ. */}
+                  <TableHead className="min-w-64">Vị trí ứng tuyển</TableHead>
                   <TableHead>Địa điểm</TableHead>
                   <TableHead className="whitespace-nowrap">HR phụ trách</TableHead>
                   <TableHead className="whitespace-nowrap">Cập nhật</TableHead>
@@ -358,7 +360,7 @@ export default async function CandidatesPage({
                           return (
                             // Giới hạn bề ngang để tên vị trí dài xuống dòng,
                             // không kéo giãn bảng.
-                            <div className="max-w-56 space-y-1 wrap-break-word">
+                            <div className="max-w-md min-w-64 space-y-1 wrap-break-word">
                               <Link
                                 href={`/jobs/${app.jobId}`}
                                 className="font-medium hover:underline"

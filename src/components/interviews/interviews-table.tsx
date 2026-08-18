@@ -169,7 +169,9 @@ export function InterviewsTable({
               <TableRow>
                 <TableHead className="w-24">Khi nào</TableHead>
                 <TableHead>Ứng viên</TableHead>
-                <TableHead>Vị trí</TableHead>
+                {/* min-w để cột không bị các cột nowrap khác ép về bề rộng tối
+                    thiểu — max-w đơn thuần chỉ chặn trên, không giữ được chỗ. */}
+                <TableHead className="min-w-72">Vị trí</TableHead>
                 <TableHead>Sale</TableHead>
                 <TableHead>HR</TableHead>
                 <TableHead>Thời gian PV</TableHead>
@@ -204,7 +206,7 @@ export function InterviewsTable({
                   {/* TableCell có sẵn whitespace-nowrap → override để tên vị trí /
                       khách hàng dài xuống dòng thay vì kéo giãn bảng. */}
                   <TableCell className="whitespace-normal">
-                    <div className="max-w-80 wrap-break-word">
+                    <div className="max-w-md min-w-72 wrap-break-word">
                       <Link
                         href={`/jobs/${r.jobId}`}
                         className="font-medium hover:underline"
