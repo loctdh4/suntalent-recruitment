@@ -170,7 +170,6 @@ export function InterviewsTable({
                 <TableHead className="w-24">Khi nào</TableHead>
                 <TableHead>Ứng viên</TableHead>
                 <TableHead>Vị trí</TableHead>
-                <TableHead>Khách hàng</TableHead>
                 <TableHead>Sale</TableHead>
                 <TableHead>HR</TableHead>
                 <TableHead>Thời gian PV</TableHead>
@@ -202,17 +201,23 @@ export function InterviewsTable({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/jobs/${r.jobId}`}
-                      className="font-medium hover:underline"
-                    >
-                      <span className="text-primary">#{formatJobCode(r.jobCode)}</span>{" "}
-                      {r.jobTitle}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {r.clientName ?? "—"}
+                  {/* TableCell có sẵn whitespace-nowrap → override để tên vị trí /
+                      khách hàng dài xuống dòng thay vì kéo giãn bảng. */}
+                  <TableCell className="whitespace-normal">
+                    <div className="max-w-80 wrap-break-word">
+                      <Link
+                        href={`/jobs/${r.jobId}`}
+                        className="font-medium hover:underline"
+                      >
+                        <span className="text-primary">#{formatJobCode(r.jobCode)}</span>{" "}
+                        {r.jobTitle}
+                      </Link>
+                      {r.clientName && (
+                        <div className="text-xs text-muted-foreground">
+                          {r.clientName}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {r.saleName ?? "—"}

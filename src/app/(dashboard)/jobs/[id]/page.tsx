@@ -129,6 +129,7 @@ export default async function JobDetailPage({
       stage: applications.stage,
       interviewAt: applications.interviewAt,
       interviewAttended: applications.interviewAttended,
+      onboardAt: applications.onboardAt,
       rejectReason: applications.rejectReason,
       candidateId: candidates.id,
       fullName: candidates.fullName,
@@ -150,6 +151,7 @@ export default async function JobDetailPage({
     location: r.location,
     stage: r.stage,
     interviewAt: r.interviewAt ? r.interviewAt.toISOString() : null,
+    onboardAt: r.onboardAt ? r.onboardAt.toISOString() : null,
     rejectReason: r.rejectReason,
   }));
 

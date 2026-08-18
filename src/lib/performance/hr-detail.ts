@@ -8,7 +8,7 @@ import {
   jobs,
 } from "@/lib/db/schema";
 import type { Period } from "./constants";
-import { type DealStatus, dealStatus, jobEventLog } from "./deal";
+import { type DealStatus, dealStatus, hiredDate, jobEventLog } from "./deal";
 import { getMember, type MemberInfo } from "./detail";
 
 export type HrJobRow = {
@@ -62,7 +62,6 @@ export type HrDetail = {
   };
 };
 
-type HistoryEntry = { stage: string; at: string; by?: string };
 
 /**
  * Bảng công việc của một HR trong kỳ.
@@ -110,6 +109,7 @@ export async function getHrDetail(
           interviewAt: applications.interviewAt,
           attended: applications.interviewAttended,
           createdAt: applications.createdAt,
+          onboardAt: applications.onboardAt,
           history: applications.history,
           candidateName: candidates.fullName,
           candidateEmail: candidates.email,
@@ -136,10 +136,7 @@ export async function getHrDetail(
       if (a.attended) agg.attended += 1;
     }
     if (a.stage === "hired") {
-      const entry = ((a.history ?? []) as HistoryEntry[])
-        .filter((h) => h.stage === "hired")
-        .pop();
-      const at = entry?.at ? new Date(entry.at) : a.createdAt;
+      const at = hiredDate(a);
       agg.hiredTotal += 1;
       if (inRange(at)) agg.hired += 1;
       const prev = lastHire.get(a.jobId);

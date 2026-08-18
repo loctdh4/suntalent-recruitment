@@ -199,6 +199,9 @@ export const applications = pgTable("applications", {
   interviewAt: timestamp("interview_at", { withTimezone: true }),
   // Ứng viên đã đến buổi phỏng vấn hay chưa.
   interviewAttended: boolean("interview_attended").default(false).notNull(),
+  // Ngày ứng viên chính thức nhận việc (nhập khi chuyển sang "Đã nhận việc").
+  // Là mốc chuẩn để tính bảo hành & doanh thu, thay cho ngày kéo thẻ.
+  onboardAt: timestamp("onboard_at", { withTimezone: true }),
   // Lý do khi chuyển sang "Không phù hợp".
   rejectReason: text("reject_reason"),
   history: jsonb("history").$type<{ stage: string; at: string; by?: string }[]>().default([]),

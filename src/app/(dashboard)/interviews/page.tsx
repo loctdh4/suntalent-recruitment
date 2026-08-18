@@ -176,7 +176,7 @@ export default async function InterviewsPage({
       </div>
       <FiltersPendingProvider>
         <InterviewFilters today={today} />
-        <PendingArea fallback={<TableSkeleton cols={8} />}>
+        <PendingArea fallback={<TableSkeleton cols={7} />}>
           <InterviewsTable rows={rows} canManage={canManage} pageInfo={pageInfo} />
         </PendingArea>
       </FiltersPendingProvider>

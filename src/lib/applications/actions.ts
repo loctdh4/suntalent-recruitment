@@ -15,13 +15,20 @@ export type ApplicationActionState = { error?: string; ok?: boolean };
 
 const stageEnum = z.enum(STAGE_VALUES as [string, ...string[]]);
 
+/** Dữ liệu đi kèm giai đoạn: PV khách hàng cần lịch, nhận việc cần ngày onboard… */
+export type StageExtra = {
+  interviewAt?: string | null;
+  rejectReason?: string | null;
+  onboardAt?: string | null;
+};
+
 /** Đổi giai đoạn pipeline của một application (ghi lịch sử). */
 export async function updateApplicationStage(
   applicationId: string,
   stage: string,
-  interviewAt?: string | null,
-  rejectReason?: string | null,
+  extra: StageExtra = {},
 ): Promise<ApplicationActionState> {
+  const { interviewAt, rejectReason, onboardAt } = extra;
   const user = await assertRole([...CANDIDATE_MANAGER_ROLES]);
   const s = stageEnum.safeParse(stage);
   if (!s.success) return { error: "Giai đoạn không hợp lệ" };
@@ -48,6 +55,12 @@ export async function updateApplicationStage(
   // Lưu lý do khi chuyển sang "Không phù hợp".
   if (s.data === "rejected") {
     updates.rejectReason = rejectReason?.trim() || null;
+  }
+  // Lưu ngày nhận việc khi chuyển sang "Đã nhận việc". Bỏ trống thì lấy hôm nay
+  // để bảo hành/doanh thu luôn có mốc tính.
+  if (s.data === "hired") {
+    const d = onboardAt ? new Date(onboardAt) : new Date();
+    updates.onboardAt = Number.isNaN(d.getTime()) ? new Date() : d;
   }
   await db.update(applications).set(updates).where(eq(applications.id, applicationId));
 

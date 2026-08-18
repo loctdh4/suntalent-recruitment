@@ -15,9 +15,9 @@ import {
 import { LocationSelect } from "@/components/ui/location-select";
 import { IndustrySelect } from "@/components/ui/industry-select";
 import { useFiltersPending } from "@/components/filters-pending";
-import { CANDIDATE_STATUS_LABEL } from "@/lib/candidates/constants";
+import { PIPELINE_STAGES } from "@/lib/applications/constants";
 
-const FILTER_KEYS = ["q", "status", "loc", "ind"];
+const FILTER_KEYS = ["q", "stage", "loc", "ind"];
 
 export function CandidateFilters({ industries }: { industries: string[] }) {
   const router = useRouter();
@@ -59,7 +59,7 @@ export function CandidateFilters({ industries }: { industries: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const hasFilters = Boolean(q || get("status") || get("loc") || get("ind"));
+  const hasFilters = Boolean(q || get("stage") || get("loc") || get("ind"));
 
   function clearAll() {
     setQ("");
@@ -91,15 +91,18 @@ export function CandidateFilters({ industries }: { industries: string[] }) {
           className="pl-9"
         />
       </div>
-      <Select value={get("status") || "all"} onValueChange={(v) => pushParams({ status: v })}>
-        <SelectTrigger className="sm:w-44">
+
+      <Select value={get("stage") || "all"} onValueChange={(v) => pushParams({ stage: v })}>
+        <SelectTrigger className="sm:w-48">
           <SelectValue placeholder="Trạng thái" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Tất cả trạng thái</SelectItem>
-          {Object.entries(CANDIDATE_STATUS_LABEL).map(([k, label]) => (
-            <SelectItem key={k} value={k}>
-              {label}
+          {/* Chưa có hồ sơ ứng tuyển nào — nguồn ứng viên còn trống để phân bổ. */}
+          <SelectItem value="none">Chưa ứng tuyển</SelectItem>
+          {PIPELINE_STAGES.map((s) => (
+            <SelectItem key={s.value} value={s.value}>
+              {s.label}
             </SelectItem>
           ))}
         </SelectContent>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarClock, MapPin, X } from "lucide-react";
+import { CalendarCheck, CalendarClock, MapPin, X } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -39,11 +39,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { PIPELINE_STAGES, REJECT_REASONS } from "@/lib/applications/constants";
 import {
   removeApplication,
   updateApplicationStage,
+  type StageExtra,
 } from "@/lib/applications/actions";
 
 export type PipelineCard = {
@@ -54,6 +55,7 @@ export type PipelineCard = {
   location: string | null;
   stage: string;
   interviewAt: string | null;
+  onboardAt: string | null;
   rejectReason: string | null;
 };
 
@@ -64,6 +66,13 @@ const STAGE_DOT: Record<string, string> = {
   hired: "bg-emerald-500",
   rejected: "bg-rose-500",
 };
+
+/** "yyyy-mm-dd" của hôm nay theo giờ máy — giá trị mặc định cho <input type="date">. */
+function todayInput() {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 function CardContent({ card }: { card: PipelineCard }) {
   return (
@@ -88,6 +97,12 @@ function CardContent({ card }: { card: PipelineCard }) {
         <p className="flex items-center gap-1 truncate text-xs font-medium text-amber-600 dark:text-amber-400">
           <CalendarClock className="size-3 shrink-0" />
           <span className="truncate">PV: {formatDateTime(card.interviewAt)}</span>
+        </p>
+      )}
+      {card.stage === "hired" && card.onboardAt && (
+        <p className="flex items-center gap-1 truncate text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <CalendarCheck className="size-3 shrink-0" />
+          <span className="truncate">Nhận việc: {formatDate(card.onboardAt)}</span>
         </p>
       )}
       {card.stage === "rejected" && card.rejectReason && (
@@ -221,6 +236,13 @@ export function PipelineBoard({
     prev: PipelineCard[];
     value: string;
   } | null>(null);
+  // Hộp thoại nhập ngày nhận việc khi chuyển sang "Đã nhận việc".
+  const [obModal, setObModal] = useState<{
+    id: string;
+    name: string;
+    prev: PipelineCard[];
+    value: string;
+  } | null>(null);
   // Hộp thoại nhập lý do khi chuyển sang "Không phù hợp".
   const [rjModal, setRjModal] = useState<{
     id: string;
@@ -239,10 +261,9 @@ export function PipelineBoard({
     id: string,
     toStage: string,
     prev: PipelineCard[],
-    interviewAt?: string,
-    rejectReason?: string,
+    extra: StageExtra = {},
   ) {
-    updateApplicationStage(id, toStage, interviewAt, rejectReason).then((res) => {
+    updateApplicationStage(id, toStage, extra).then((res) => {
       if (res?.error) {
         toast.error(res.error);
         setCards(prev);
@@ -264,7 +285,7 @@ export function PipelineBoard({
     const reason = (choice === "__other__" ? custom : choice).trim();
     if (!reason) return;
     setCards((cs) => cs.map((c) => (c.id === id ? { ...c, rejectReason: reason } : c)));
-    commitStage(id, "rejected", prev, undefined, reason);
+    commitStage(id, "rejected", prev, { rejectReason: reason });
     setRjModal(null);
   }
 
@@ -280,8 +301,25 @@ export function PipelineBoard({
     if (iso) {
       setCards((cs) => cs.map((c) => (c.id === id ? { ...c, interviewAt: iso } : c)));
     }
-    commitStage(id, "client_iv", prev, iso);
+    commitStage(id, "client_iv", prev, { interviewAt: iso });
     setIvModal(null);
+  }
+
+  function cancelOnboard() {
+    if (obModal) setCards(obModal.prev);
+    setObModal(null);
+  }
+
+  function confirmOnboard() {
+    if (!obModal) return;
+    const { id, prev, value } = obModal;
+    // Neo vào giữa ngày để không lệch sang hôm trước khi đổi múi giờ.
+    const iso = value ? new Date(`${value}T12:00:00`).toISOString() : undefined;
+    setCards((cs) =>
+      cs.map((c) => (c.id === id ? { ...c, onboardAt: iso ?? c.onboardAt } : c)),
+    );
+    commitStage(id, "hired", prev, { onboardAt: iso });
+    setObModal(null);
   }
 
   function remove(id: string) {
@@ -312,6 +350,11 @@ export function PipelineBoard({
     // Chuyển sang PV khách hàng: hỏi thời gian PV trước khi lưu.
     if (toStage === "client_iv") {
       setIvModal({ id, name: card.name, prev, value: "" });
+      return;
+    }
+    // Chuyển sang Đã nhận việc: hỏi ngày onboard trước khi lưu (mặc định hôm nay).
+    if (toStage === "hired") {
+      setObModal({ id, name: card.name, prev, value: todayInput() });
       return;
     }
     // Chuyển sang Không phù hợp: hỏi lý do trước khi lưu.
@@ -373,6 +416,38 @@ export function PipelineBoard({
               Hủy
             </Button>
             <Button onClick={confirmInterview}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ngày nhận việc khi chuyển sang Đã nhận việc */}
+      <Dialog open={!!obModal} onOpenChange={(o) => !o && cancelOnboard()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ngày nhận việc</DialogTitle>
+            <DialogDescription>
+              Chọn ngày {obModal?.name} chính thức onboard. Đây là mốc tính bảo hành
+              và doanh thu.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="onboardAt">Ngày onboard</Label>
+            <Input
+              id="onboardAt"
+              type="date"
+              value={obModal?.value ?? ""}
+              onChange={(e) =>
+                setObModal((m) => (m ? { ...m, value: e.target.value } : m))
+              }
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={cancelOnboard}>
+              Hủy
+            </Button>
+            <Button onClick={confirmOnboard} disabled={!obModal?.value}>
+              Lưu
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

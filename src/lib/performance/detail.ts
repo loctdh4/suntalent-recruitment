@@ -9,7 +9,7 @@ import {
   profiles,
 } from "@/lib/db/schema";
 import type { Period } from "./constants";
-import { type DealStatus, dealStatus, jobEventLog } from "./deal";
+import { type DealStatus, dealStatus, hiredDate, jobEventLog } from "./deal";
 
 export type DealRow = {
   jobId: string;
@@ -125,6 +125,7 @@ export async function getSaleDetail(
           stage: applications.stage,
           rejectReason: applications.rejectReason,
           createdAt: applications.createdAt,
+          onboardAt: applications.onboardAt,
           history: applications.history,
           candidateName: candidates.fullName,
           candidateEmail: candidates.email,
@@ -139,10 +140,7 @@ export async function getSaleDetail(
 
   for (const a of appRows) {
     if (a.stage !== "hired") continue;
-    const entry = ((a.history ?? []) as { stage: string; at: string }[])
-      .filter((h) => h.stage === "hired")
-      .pop();
-    const at = entry?.at ? new Date(entry.at) : a.createdAt;
+    const at = hiredDate(a);
     hiredByJob.set(a.jobId, (hiredByJob.get(a.jobId) ?? 0) + 1);
     const prev = lastHireByJob.get(a.jobId);
     if (!prev || at > prev) lastHireByJob.set(a.jobId, at);

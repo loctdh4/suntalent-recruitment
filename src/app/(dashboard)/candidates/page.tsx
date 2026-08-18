@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Target, MapPin, Clock } from "lucide-react";
+import { Target, MapPin, Clock, UserRound } from "lucide-react";
 import {
   and,
   count,
@@ -28,16 +28,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/lib/db";
-import { candidates, applications, jobs, clients } from "@/lib/db/schema";
+import { candidates, applications, jobs, clients, profiles } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/user";
 import { CANDIDATE_MANAGER_ROLES } from "@/lib/candidates/constants";
 import { CvUploadButton } from "@/components/candidates/cv-upload-button";
 import { CandidateManualDialog } from "@/components/candidates/candidate-manual-dialog";
-import { CandidateStatusBadge } from "@/components/candidates/candidate-status-badge";
 import { StageBadge } from "@/components/applications/stage-badge";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BackfillButton } from "@/components/matching/backfill-button";
 import { CandidateFilters } from "@/components/candidates/candidate-filters";
+import { STAGE_VALUES } from "@/lib/applications/constants";
 import { StatCard } from "@/components/stat-card";
 import { FiltersPendingProvider, PendingArea } from "@/components/filters-pending";
 import { TableSkeleton } from "@/components/table-skeleton";
@@ -47,20 +47,21 @@ import { getIndustryNames } from "@/lib/industries/queries";
 import { resolvePage } from "@/lib/pagination";
 import { Pagination } from "@/components/pagination";
 
-const STATUS_VALUES = ["parsing", "ready", "error"] as const;
+/** Giá trị lọc pipeline riêng: ứng viên chưa nằm trong pipeline nào. */
+const STAGE_NONE = "none";
 
 export default async function CandidatesPage({
   searchParams,
 }: {
   searchParams: Promise<{
     q?: string;
-    status?: string;
+    stage?: string;
     loc?: string;
     ind?: string;
     page?: string;
   }>;
 }) {
-  const { q, status, loc, ind, page } = await searchParams;
+  const { q, stage, loc, ind, page } = await searchParams;
   const user = await getCurrentUser();
   const canManage = CANDIDATE_MANAGER_ROLES.includes(
     (user?.role ?? "") as (typeof CANDIDATE_MANAGER_ROLES)[number],
@@ -78,8 +79,25 @@ export default async function CandidatesPage({
       )!,
     );
   }
-  if (status && (STATUS_VALUES as readonly string[]).includes(status)) {
-    conds.push(eq(candidates.status, status as (typeof STATUS_VALUES)[number]));
+  // Lọc theo giai đoạn pipeline: giữ ứng viên có ít nhất một hồ sơ ứng tuyển ở
+  // giai đoạn đó (một người có thể nằm ở nhiều pipeline khác nhau).
+  if (stage === STAGE_NONE) {
+    conds.push(
+      notInArray(
+        candidates.id,
+        db.select({ id: applications.candidateId }).from(applications),
+      ),
+    );
+  } else if (stage && (STAGE_VALUES as readonly string[]).includes(stage)) {
+    conds.push(
+      inArray(
+        candidates.id,
+        db
+          .select({ id: applications.candidateId })
+          .from(applications)
+          .where(eq(applications.stage, stage as (typeof STAGE_VALUES)[number])),
+      ),
+    );
   }
   if (loc?.trim()) conds.push(ilike(candidates.location, `%${loc.trim()}%`));
   if (ind?.trim()) conds.push(eq(candidates.industry, ind.trim()));
@@ -122,8 +140,11 @@ export default async function CandidatesPage({
       yearsExp: candidates.yearsExp,
       status: candidates.status,
       updatedAt: candidates.updatedAt,
+      ownerName: profiles.fullName,
+      ownerEmail: profiles.email,
     })
     .from(candidates)
+    .leftJoin(profiles, eq(candidates.createdBy, profiles.id))
     .where(where)
     .orderBy(desc(candidates.createdAt))
     .limit(pageInfo.limit)
@@ -139,6 +160,7 @@ export default async function CandidatesPage({
           jobTitle: jobs.title,
           clientName: clients.name,
           stage: applications.stage,
+          onboardAt: applications.onboardAt,
         })
         .from(applications)
         .innerJoin(jobs, eq(applications.jobId, jobs.id))
@@ -177,7 +199,7 @@ export default async function CandidatesPage({
   }
 
   const hasParsing = rows.some((r) => r.status === "parsing");
-  const hasFilter = Boolean(q?.trim() || status || loc || ind);
+  const hasFilter = Boolean(q?.trim() || stage || loc || ind);
 
   return (
     <div className="space-y-6">
@@ -207,7 +229,7 @@ export default async function CandidatesPage({
       <FiltersPendingProvider>
         <CandidateFilters industries={industryList} />
 
-        <PendingArea fallback={<TableSkeleton cols={6} />}>
+        <PendingArea fallback={<TableSkeleton cols={7} />}>
       {rows.length === 0 ? (
         <Card>
           <CardHeader>
@@ -232,15 +254,12 @@ export default async function CandidatesPage({
               return (
                 <Card key={c.id}>
                   <CardContent className="space-y-2 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/candidates/${c.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {c.fullName ?? "(Chưa trích xuất)"}
-                      </Link>
-                      <CandidateStatusBadge status={c.status} />
-                    </div>
+                    <Link
+                      href={`/candidates/${c.id}`}
+                      className="block font-medium hover:underline"
+                    >
+                      {c.fullName ?? "(Chưa trích xuất)"}
+                    </Link>
                     {c.email && (
                       <div className="text-sm text-muted-foreground">{c.email}</div>
                     )}
@@ -260,6 +279,11 @@ export default async function CandidatesPage({
                           <Clock className="size-3.5" /> {c.yearsExp} năm KN
                         </span>
                       )}
+                      {(c.ownerName ?? c.ownerEmail) && (
+                        <span className="flex items-center gap-1">
+                          <UserRound className="size-3.5" /> {c.ownerName ?? c.ownerEmail}
+                        </span>
+                      )}
                     </div>
                     {entry && (
                       <div className="flex flex-wrap items-center gap-2 border-t pt-2 text-sm">
@@ -271,6 +295,11 @@ export default async function CandidatesPage({
                           {entry.app.jobTitle}
                         </Link>
                         <StageBadge stage={entry.app.stage} />
+                        {entry.app.stage === "hired" && entry.app.onboardAt && (
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                            Nhận việc {formatDate(entry.app.onboardAt)}
+                          </span>
+                        )}
                         {entry.others > 0 && (
                           <span className="text-xs text-muted-foreground">
                             +{entry.others} vị trí khác
@@ -295,8 +324,7 @@ export default async function CandidatesPage({
                   <TableHead>Ngành</TableHead>
                   <TableHead>Vị trí ứng tuyển</TableHead>
                   <TableHead>Địa điểm</TableHead>
-                  <TableHead className="text-right">Năm KN</TableHead>
-                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="whitespace-nowrap">HR phụ trách</TableHead>
                   <TableHead className="whitespace-nowrap">Cập nhật</TableHead>
                 </TableRow>
               </TableHeader>
@@ -320,13 +348,17 @@ export default async function CandidatesPage({
                       <TableCell className="text-sm text-muted-foreground">
                         {c.industry ?? "—"}
                       </TableCell>
-                      <TableCell>
+                      {/* TableCell của shadcn có sẵn whitespace-nowrap → phải override
+                          bằng whitespace-normal, nếu không chữ tràn đè cột bên. */}
+                      <TableCell className="whitespace-normal">
                         {(() => {
                           const entry = appMap.get(c.id);
                           if (!entry) return <span className="text-muted-foreground">—</span>;
                           const { app, others } = entry;
                           return (
-                            <div className="space-y-1">
+                            // Giới hạn bề ngang để tên vị trí dài xuống dòng,
+                            // không kéo giãn bảng.
+                            <div className="max-w-56 space-y-1 wrap-break-word">
                               <Link
                                 href={`/jobs/${app.jobId}`}
                                 className="font-medium hover:underline"
@@ -340,6 +372,11 @@ export default async function CandidatesPage({
                               )}
                               <div className="flex flex-wrap items-center gap-1.5">
                                 <StageBadge stage={app.stage} />
+                                {app.stage === "hired" && app.onboardAt && (
+                                  <span className="text-xs whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                                    Nhận việc {formatDate(app.onboardAt)}
+                                  </span>
+                                )}
                                 {others > 0 && (
                                   <span className="text-xs text-muted-foreground">
                                     +{others} vị trí khác
@@ -351,11 +388,8 @@ export default async function CandidatesPage({
                         })()}
                       </TableCell>
                       <TableCell>{c.location ?? "—"}</TableCell>
-                      <TableCell className="text-right">
-                        {c.yearsExp != null ? c.yearsExp : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <CandidateStatusBadge status={c.status} />
+                      <TableCell className="text-sm text-muted-foreground">
+                        {c.ownerName ?? c.ownerEmail ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
                         {formatDate(c.updatedAt)}

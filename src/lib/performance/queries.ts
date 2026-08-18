@@ -9,6 +9,7 @@ import {
   profiles,
 } from "@/lib/db/schema";
 import { HR_WEIGHTS, currentVnMonth, type Period } from "./constants";
+import { hiredDate } from "./deal";
 
 const SALES_ROLES = ["sales", "sales_intern"];
 const HR_ROLES = ["recruiter", "recruiter_intern"];
@@ -69,16 +70,14 @@ export type PerformanceData = {
 
 type HistoryEntry = { stage: string; at: string; by?: string };
 
-/** Thời điểm ứng viên nhận việc (lấy từ history; fallback ngày tạo ứng tuyển). */
+/** Thời điểm ứng viên nhận việc — xem `hiredDate` (ưu tiên ngày onboard đã nhập). */
 function hiredAt(app: {
   stage: string;
   createdAt: Date;
+  onboardAt: Date | null;
   history: HistoryEntry[] | null;
 }): Date | null {
-  if (app.stage !== "hired") return null;
-  const entry = (app.history ?? []).filter((h) => h.stage === "hired").pop();
-  const d = entry?.at ? new Date(entry.at) : app.createdAt;
-  return Number.isNaN(d.getTime()) ? app.createdAt : d;
+  return app.stage === "hired" ? hiredDate(app) : null;
 }
 
 /** Chuẩn hóa theo giá trị lớn nhất trong nhóm rồi nhân trọng số → điểm 0–100. */
@@ -147,6 +146,7 @@ export async function getPerformance(period: Period): Promise<PerformanceData> {
           interviewAt: applications.interviewAt,
           attended: applications.interviewAttended,
           createdAt: applications.createdAt,
+          onboardAt: applications.onboardAt,
           history: applications.history,
         })
         .from(applications),

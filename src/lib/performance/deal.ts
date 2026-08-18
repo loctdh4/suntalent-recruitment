@@ -49,10 +49,29 @@ export function dealStatus({
   return "running";
 }
 
+/**
+ * Ngày ứng viên onboard. Ưu tiên `applications.onboard_at` (người dùng nhập khi
+ * kéo sang "Đã nhận việc"); hồ sơ cũ chưa có cột này thì suy từ lịch sử, cuối
+ * cùng mới lấy ngày tạo ứng tuyển.
+ */
+export function hiredDate(app: {
+  onboardAt?: Date | null;
+  createdAt: Date;
+  history: unknown;
+}): Date {
+  if (app.onboardAt) return app.onboardAt;
+  const entry = ((app.history ?? []) as HistoryEntry[])
+    .filter((h) => h.stage === "hired")
+    .pop();
+  const d = entry?.at ? new Date(entry.at) : app.createdAt;
+  return Number.isNaN(d.getTime()) ? app.createdAt : d;
+}
+
 type AppForLog = {
   stage: string;
   rejectReason: string | null;
   createdAt: Date;
+  onboardAt?: Date | null;
   history: unknown;
   candidateName: string | null;
   candidateEmail: string | null;
@@ -71,10 +90,7 @@ export function jobEventLog(apps: AppForLog[]): string[] {
     const hiredEntry = history.filter((h) => h.stage === "hired").pop();
 
     if (a.stage === "hired") {
-      events.push({
-        at: hiredEntry?.at ? new Date(hiredEntry.at) : a.createdAt,
-        text: `${who} Onboard`,
-      });
+      events.push({ at: hiredDate(a), text: `${who} Onboard` });
     } else if (a.stage === "rejected") {
       const rejectEntry = history.filter((h) => h.stage === "rejected").pop();
       if (hiredEntry && rejectEntry?.at) {
